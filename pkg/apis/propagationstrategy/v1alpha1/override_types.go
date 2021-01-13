@@ -8,32 +8,36 @@ import (
 // +genclient
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
-// OverridePolicy represents the policy that overrides a group of resources to one or more clusters.
-type OverridePolicy struct {
+// Override represents the policy that overrides a group of resources to one or more clusters.
+type Override struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
 
-	// Spec represents the desired behavior of OverridePolicy.
+	// Spec represents the desired behavior of Override.
 	Spec OverrideSpec `json:"spec"`
 }
 
-// OverrideSpec defines the desired behavior of OverridePolicy.
+// OverrideSpec defines the desired behavior of Override.
 type OverrideSpec struct {
 	// ResourceSelectors restricts resource types that this override policy applies to.
+	// If not specified, means match all resources.
+	// +optional
 	ResourceSelectors []ResourceSelector `json:"resourceSelectors,omitempty"`
 
 	// TargetCluster defines restrictions on this override policy
 	// that only applies to resources propagated to the matching clusters
-	TargetCluster ClusterAffinity `json:"targetCluster,omitempty"`
+	// If not specified, means match all clusters.
+	// +optional
+	TargetCluster *ClusterAffinity `json:"targetCluster,omitempty"`
 
 	// Overriders represents the override rules that would apply on resources
-	Overriders Overriders `json:"overriders,omitempty"`
+	Overriders Overriders `json:"overriders"`
 }
 
 // Overriders represents the override rules that would apply on resources
 type Overriders struct {
 	// Plaintext represents override rules defined with plaintext overriders.
-	Plaintext []PlaintextOverrider `json:"plaintext,omitempty"`
+	Plaintext []PlaintextOverrider `json:"plaintext"`
 }
 
 // PlaintextOverrider is a simple overrider that overrides target fields
@@ -46,8 +50,9 @@ type PlaintextOverrider struct {
 	Operator OverriderOperator `json:"operator"`
 	// Value to be applied to target field.
 	// Must be empty when operator is Remove.
+	// +kubebuilder:pruning:PreserveUnknownFields
 	// +optional
-	Value runtime.RawExtension `json:",inline"`
+	Value runtime.RawExtension `json:"value,omitempty"`
 }
 
 // OverriderOperator is the set of operators that can be used in an overrider.
@@ -62,11 +67,11 @@ const (
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
-// OverridePolicyList is a collection of OverridePolicy.
-type OverridePolicyList struct {
+// OverrideList is a collection of Override.
+type OverrideList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata,omitempty"`
 
-	// Items holds a list of OverridePolicy.
-	Items []OverridePolicy `json:"items"`
+	// Items holds a list of Override.
+	Items []Override `json:"items"`
 }

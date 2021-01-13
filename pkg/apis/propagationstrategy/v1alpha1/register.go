@@ -37,8 +37,8 @@ func addKnownTypes(scheme *runtime.Scheme) error {
 		&PropagationBindingList{},
 		&PropagationWork{},
 		&PropagationWorkList{},
-		&OverridePolicy{},
-		&OverridePolicyList{},
+		&Override{},
+		&OverrideList{},
 	)
 	metav1.AddToGroupVersion(scheme, SchemeGroupVersion)
 	return nil
