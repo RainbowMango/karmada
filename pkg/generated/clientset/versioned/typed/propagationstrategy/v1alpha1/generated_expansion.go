@@ -2,7 +2,7 @@
 
 package v1alpha1
 
-type OverridePolicyExpansion interface{}
+type OverrideExpansion interface{}
 
 type PropagationBindingExpansion interface{}
 

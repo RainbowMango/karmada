@@ -12,8 +12,8 @@ type FakePropagationstrategyV1alpha1 struct {
 	*testing.Fake
 }
 
-func (c *FakePropagationstrategyV1alpha1) OverridePolicies(namespace string) v1alpha1.OverridePolicyInterface {
-	return &FakeOverridePolicies{c, namespace}
+func (c *FakePropagationstrategyV1alpha1) Overrides(namespace string) v1alpha1.OverrideInterface {
+	return &FakeOverrides{c, namespace}
 }
 
 func (c *FakePropagationstrategyV1alpha1) PropagationBindings(namespace string) v1alpha1.PropagationBindingInterface {

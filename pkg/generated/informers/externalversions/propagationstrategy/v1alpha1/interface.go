@@ -8,8 +8,8 @@ import (
 
 // Interface provides access to all the informers in this group version.
 type Interface interface {
-	// OverridePolicies returns a OverridePolicyInformer.
-	OverridePolicies() OverridePolicyInformer
+	// Overrides returns a OverrideInformer.
+	Overrides() OverrideInformer
 	// PropagationBindings returns a PropagationBindingInformer.
 	PropagationBindings() PropagationBindingInformer
 	// PropagationPolicies returns a PropagationPolicyInformer.
@@ -29,9 +29,9 @@ func New(f internalinterfaces.SharedInformerFactory, namespace string, tweakList
 	return &version{factory: f, namespace: namespace, tweakListOptions: tweakListOptions}
 }
 
-// OverridePolicies returns a OverridePolicyInformer.
-func (v *version) OverridePolicies() OverridePolicyInformer {
-	return &overridePolicyInformer{factory: v.factory, namespace: v.namespace, tweakListOptions: v.tweakListOptions}
+// Overrides returns a OverrideInformer.
+func (v *version) Overrides() OverrideInformer {
+	return &overrideInformer{factory: v.factory, namespace: v.namespace, tweakListOptions: v.tweakListOptions}
 }
 
 // PropagationBindings returns a PropagationBindingInformer.

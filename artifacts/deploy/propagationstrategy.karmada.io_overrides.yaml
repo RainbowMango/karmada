@@ -6,21 +6,21 @@ metadata:
   annotations:
     controller-gen.kubebuilder.io/version: v0.4.1
   creationTimestamp: null
-  name: overridepolicies.propagationstrategy.karmada.io
+  name: overrides.propagationstrategy.karmada.io
 spec:
   group: propagationstrategy.karmada.io
   names:
-    kind: OverridePolicy
-    listKind: OverridePolicyList
-    plural: overridepolicies
-    singular: overridepolicy
+    kind: Override
+    listKind: OverrideList
+    plural: overrides
+    singular: override
   scope: Namespaced
   versions:
   - name: v1alpha1
     schema:
       openAPIV3Schema:
-        description: OverridePolicy represents the policy that overrides a group of
-          resources to one or more clusters.
+        description: Override represents the policy that overrides a group of resources
+          to one or more clusters.
         properties:
           apiVersion:
             description: 'APIVersion defines the versioned schema of this representation
@@ -35,7 +35,7 @@ spec:
           metadata:
             type: object
           spec:
-            description: Spec represents the desired behavior of OverridePolicy.
+            description: Spec represents the desired behavior of Override.
             properties:
               overriders:
                 description: Overriders represents the override rules that would apply
@@ -55,15 +55,22 @@ spec:
                         path:
                           description: Path indicates the path of target field
                           type: string
+                        value:
+                          description: Value to be applied to target field. Must be
+                            empty when operator is Remove.
+                          type: object
+                          x-kubernetes-preserve-unknown-fields: true
                       required:
                       - operator
                       - path
                       type: object
                     type: array
+                required:
+                - plaintext
                 type: object
               resourceSelectors:
                 description: ResourceSelectors restricts resource types that this
-                  override policy applies to.
+                  override policy applies to. If not specified, means match all resources.
                 items:
                   description: ResourceSelector the resources will be selected.
                   properties:
@@ -135,6 +142,7 @@ spec:
               targetCluster:
                 description: TargetCluster defines restrictions on this override policy
                   that only applies to resources propagated to the matching clusters
+                  If not specified, means match all clusters.
                 properties:
                   clusterNames:
                     description: ClusterNames is the list of clusters to be selected.
@@ -231,6 +239,8 @@ spec:
                         type: object
                     type: object
                 type: object
+            required:
+            - overriders
             type: object
         required:
         - spec

@@ -10,7 +10,7 @@ import (
 
 type PropagationstrategyV1alpha1Interface interface {
 	RESTClient() rest.Interface
-	OverridePoliciesGetter
+	OverridesGetter
 	PropagationBindingsGetter
 	PropagationPoliciesGetter
 	PropagationWorksGetter
@@ -21,8 +21,8 @@ type PropagationstrategyV1alpha1Client struct {
 	restClient rest.Interface
 }
 
-func (c *PropagationstrategyV1alpha1Client) OverridePolicies(namespace string) OverridePolicyInterface {
-	return newOverridePolicies(c, namespace)
+func (c *PropagationstrategyV1alpha1Client) Overrides(namespace string) OverrideInterface {
+	return newOverrides(c, namespace)
 }
 
 func (c *PropagationstrategyV1alpha1Client) PropagationBindings(namespace string) PropagationBindingInterface {
