@@ -21,4 +21,6 @@ GO111MODULE=on go install github.com/onsi/ginkgo/ginkgo
 
 # Run e2e
 export KUBECONFIG=${KARMADA_APISERVER_KUBECONFIG}
+sudo chmod -R 0777 ${HOME}/.kube
+sudo chmod -R 0777 /var/run/karmada
 ginkgo -v -race -failFast ./test/e2e/
