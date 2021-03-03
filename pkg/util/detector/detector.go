@@ -266,7 +266,7 @@ func (d *ResourceDetector) TagPolicyForObject(object *unstructured.Unstructured,
 
 	desiredPlacement, err := json.Marshal(policy.Spec.Placement)
 	if err != nil {
-		klog.Errorf("Failed to marshal policy(%s/%s) placement, error: %v", err)
+		klog.Errorf("Failed to marshal policy(%s/%s) placement, error: %v", policy.Namespace, policy.Name, err)
 		return err
 	}
 
