@@ -31,6 +31,13 @@ const (
 	AppliedClusterOverrideKey = "karmada.io/cluster-override"
 )
 
+// Define annotations used by karmada system.
+const (
+	// PolicyPlacementAnnotation is the placement annotation of a policy's placement.
+	// The policy could be PropagationPolicy or ClusterPropagationPolicy.
+	PolicyPlacementAnnotation = "policy.karmada.io/placement"
+)
+
 // Define finalizers used by karmada system.
 const (
 	// ClusterControllerFinalizer is added to Cluster to ensure Work as well as the

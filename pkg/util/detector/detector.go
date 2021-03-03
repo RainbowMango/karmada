@@ -2,6 +2,7 @@ package detector
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"strings"
 	"time"
@@ -212,6 +213,7 @@ func (d *ResourceDetector) ApplyPolicy(object *unstructured.Unstructured, object
 	bindingCopy := binding.DeepCopy()
 	operationResult, err := controllerutil.CreateOrUpdate(context.TODO(), d.Client, bindingCopy, func() error {
 		// Just update necessary fields, especially avoid modifying Spec.Clusters which is scheduling result, if already exists.
+		bindingCopy.Annotations = binding.Annotations
 		bindingCopy.Labels = binding.Labels
 		bindingCopy.OwnerReferences = binding.OwnerReferences
 		bindingCopy.Spec.Resource = binding.Spec.Resource
@@ -275,12 +277,21 @@ func (d *ResourceDetector) ClaimPolicyForObject(object *unstructured.Unstructure
 // BuildResourceBinding builds a desired PropagationBinding for object.
 func (d *ResourceDetector) BuildResourceBinding(object *unstructured.Unstructured, objectKey ClusterWideKey, policy *policyv1alpha1.PropagationPolicy) *policyv1alpha1.PropagationBinding {
 	bindingName := names.GenerateBindingName(object.GetNamespace(), object.GetKind(), object.GetName())
+	placementBytes, err := json.Marshal(policy.Spec.Placement)
+	if err != nil {
+		// should not happen
+		klog.Errorf("Failed to marshal policy placement: %v", err)
+	}
+
 	propagationBinding := &policyv1alpha1.PropagationBinding{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      bindingName,
 			Namespace: object.GetNamespace(),
 			OwnerReferences: []metav1.OwnerReference{
 				*metav1.NewControllerRef(object, objectKey.GVK),
+			},
+			Annotations: map[string]string{
+				util.PolicyPlacementAnnotation: string(placementBytes),
 			},
 			Labels: map[string]string{
 				util.PropagationPolicyNamespaceLabel: policy.GetNamespace(),
