@@ -204,7 +204,7 @@ func (d *ResourceDetector) LookForMatchedPolicy(object *unstructured.Unstructure
 func (d *ResourceDetector) ApplyPolicy(object *unstructured.Unstructured, objectKey ClusterWideKey, policy *policyv1alpha1.PropagationPolicy) error {
 	klog.Infof("Applying policy(%s) for object: %s", policy.Name, objectKey)
 
-	if err := d.ClaimPolicyForObject(object, policy.Namespace, policy.Name); err != nil {
+	if err := d.TagPolicyForObject(object, policy); err != nil {
 		klog.Errorf("Failed to claim policy(%s) for object: %s", policy.Name, object)
 		return err
 	}
@@ -258,18 +258,25 @@ func (d *ResourceDetector) GetUnstructuredObject(objectKey ClusterWideKey) (*uns
 	return &unstructured.Unstructured{Object: uncastObj}, nil
 }
 
-// ClaimPolicyForObject set policy identifier which the object associated with.
-func (d *ResourceDetector) ClaimPolicyForObject(object *unstructured.Unstructured, policyNamespace string, policyName string) error {
+// TagPolicyForObject set policy identifier which the object associated with.
+func (d *ResourceDetector) TagPolicyForObject(object *unstructured.Unstructured, policy *policyv1alpha1.PropagationPolicy) error {
 	claimedNS := util.GetLabelValue(object.GetLabels(), util.PropagationPolicyNamespaceLabel)
 	claimedName := util.GetLabelValue(object.GetLabels(), util.PropagationPolicyNameLabel)
+	placement := object.GetAnnotations()[util.PolicyPlacementAnnotation]
 
-	// object has been claimed, don't need to claim again
-	if claimedNS == policyNamespace && claimedName == policyName {
+	desiredPlacement, err := json.Marshal(policy.Spec.Placement)
+	if err != nil {
+		klog.Errorf("Failed to marshal policy(%s/%s) placement, error: %v", err)
+		return err
+	}
+
+	if claimedNS == policy.Namespace && claimedName == policy.Name && placement == string(desiredPlacement) {
 		return nil
 	}
 
-	util.MergeLabel(object, util.PropagationPolicyNamespaceLabel, policyNamespace)
-	util.MergeLabel(object, util.PropagationPolicyNameLabel, policyName)
+	util.MergeLabel(object, util.PropagationPolicyNamespaceLabel, policy.Namespace)
+	util.MergeLabel(object, util.PropagationPolicyNameLabel, policy.Name)
+	util.MergeAnnotation(object, util.PolicyPlacementAnnotation, string(desiredPlacement))
 
 	return d.Client.Update(context.TODO(), object.DeepCopyObject())
 }
