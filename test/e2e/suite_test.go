@@ -183,7 +183,7 @@ func getClusterClient(clusterName string) kubernetes.Interface {
 func createCluster(clusterName, kubeConfigPath, controlPlane, clusterContext string) error {
 	err := clusterProvider.Create(clusterName, cluster.CreateWithKubeconfigPath(kubeConfigPath))
 	if err != nil {
-		return err
+		return fmt.Errorf("create cluster failed: %w", err)
 	}
 
 	cmd := exec.Command(
@@ -193,7 +193,7 @@ func createCluster(clusterName, kubeConfigPath, controlPlane, clusterContext str
 	)
 	lines, err := exec.OutputLines(cmd)
 	if err != nil {
-		return err
+		return fmt.Errorf("output line failed: %w", err)
 	}
 
 	pathOptions := clientcmd.NewDefaultPathOptions()
@@ -201,14 +201,14 @@ func createCluster(clusterName, kubeConfigPath, controlPlane, clusterContext str
 
 	config, err := pathOptions.GetStartingConfig()
 	if err != nil {
-		return err
+		return fmt.Errorf("get starting config failed: %w", err)
 	}
 
 	serverIP := fmt.Sprintf("https://%s:6443", lines[0])
 	config.Clusters[clusterContext].Server = serverIP
 	err = clientcmd.ModifyConfig(pathOptions, *config, true)
 	if err != nil {
-		return err
+		return fmt.Errorf("modify config failed: %w", err)
 	}
 	return nil
 }

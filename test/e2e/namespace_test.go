@@ -5,10 +5,6 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/karmada-io/karmada/pkg/karmadactl"
-	"github.com/karmada-io/karmada/pkg/karmadactl/options"
-	"github.com/karmada-io/karmada/pkg/util"
-	"github.com/karmada-io/karmada/test/helper"
 	"github.com/onsi/ginkgo"
 	"github.com/onsi/gomega"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -16,6 +12,12 @@ import (
 	"k8s.io/apimachinery/pkg/util/rand"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/client-go/tools/clientcmd"
+	"k8s.io/klog/v2"
+
+	"github.com/karmada-io/karmada/pkg/karmadactl"
+	"github.com/karmada-io/karmada/pkg/karmadactl/options"
+	"github.com/karmada-io/karmada/pkg/util"
+	"github.com/karmada-io/karmada/test/helper"
 )
 
 var _ = ginkgo.Describe("[namespace autoprovision] namespace autoprovision testing", func() {
@@ -30,6 +32,7 @@ var _ = ginkgo.Describe("[namespace autoprovision] namespace autoprovision testi
 
 	ginkgo.BeforeEach(func() {
 		// create a new member cluster which will be used by following tests.
+		klog.Infof("[JUSTFORDEBUG]: Staring cluster: %s, kubeconfig: %s", clusterName, kubeConfigPath)
 		err := createCluster(clusterName, kubeConfigPath, controlPlane, clusterContext)
 		gomega.Expect(err).ShouldNot(gomega.HaveOccurred())
 	})
