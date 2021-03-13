@@ -311,7 +311,6 @@ func (s *Scheduler) scheduleNext() bool {
 		return false
 	}
 	defer s.queue.Done(key)
-	klog.Infof("Failover flag is: %v", Failover)
 
 	var err error
 	switch s.getScheduleType(key.(string)) {
