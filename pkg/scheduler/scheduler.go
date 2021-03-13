@@ -9,6 +9,7 @@ import (
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/equality"
 	"k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
@@ -40,6 +41,20 @@ const (
 	//
 	// 5ms, 10ms, 20ms, 40ms, 80ms, 160ms, 320ms, 640ms, 1.3s, 2.6s, 5.1s, 10.2s, 20.4s, 41s, 82s
 	maxRetries = 15
+)
+
+// ScheduleType defines the schedule type a binding object should be performed.
+type ScheduleType string
+
+const (
+	// FirstSchedule ... TODO
+	FirstSchedule ScheduleType = "FirstSchedule"
+	// ReconcileSchedule... TODO
+	ReconcileSchedule ScheduleType = "ReconcileSchedule"
+	// FailoverSchedule... TODO
+	FailoverSchedule ScheduleType = "FailoverSchedule"
+	// Unknown means can't detect the schedule type
+	Unknown ScheduleType = "Unknown"
 )
 
 // Failover indicates if the scheduler should performs re-scheduler in case of cluster failure.
@@ -227,13 +242,61 @@ func (s *Scheduler) worker() {
 	}
 }
 
-// Trigger is used to judge whether the ResourceBinding is used for rescheduling. True means that it's used for rescheduling
-// false means that the ResourceBinding needs to schedule.
-func (s *Scheduler) triggerReschedule(key string) bool {
-	ns, name, _ := cache.SplitMetaNamespaceKey(key)
-	resourceBinding, _ := s.bindingLister.ResourceBindings(ns).Get(name)
-	klog.Info("Trigger start")
-	return len(resourceBinding.Spec.Clusters) != 0
+func (s *Scheduler) getScheduleType(key string) ScheduleType {
+	ns, name, err := cache.SplitMetaNamespaceKey(key)
+	if err != nil {
+		return Unknown
+	}
+
+	// ResourceBinding object
+	if len(ns) > 0 {
+		resourceBinding, err := s.bindingLister.ResourceBindings(ns).Get(name)
+		if errors.IsNotFound(err) {
+			return Unknown
+		}
+
+		if len(resourceBinding.Spec.Clusters) == 0 {
+			return FirstSchedule
+		}
+
+		policyNamespace := util.GetLabelValue(resourceBinding.Labels, util.PropagationPolicyNamespaceLabel)
+		policyName := util.GetLabelValue(resourceBinding.Labels, util.PropagationPolicyNameLabel)
+
+		policy, err := s.policyLister.PropagationPolicies(policyNamespace).Get(policyName)
+		if err != nil {
+			return Unknown
+		}
+		placement, err := json.Marshal(policy.Spec.Placement)
+		if err != nil {
+			klog.Errorf("Failed to marshal placement of propagationPolicy %s/%s, error: %v", policy.Namespace, policy.Name, err)
+			return Unknown
+		}
+		policyPlacementStr := string(placement)
+
+		appliedPlacement := util.GetLabelValue(resourceBinding.Annotations, util.PolicyPlacementAnnotation)
+
+		if policyPlacementStr != appliedPlacement {
+			return ReconcileSchedule
+		}
+
+		clusters := s.schedulerCache.Snapshot().GetClusters()
+		for _, tc := range resourceBinding.Spec.Clusters {
+			bindedCluster := tc.Name
+			for _, c := range clusters {
+				if c.Cluster().Name == bindedCluster {
+					if meta.IsStatusConditionPresentAndEqual(c.Cluster().Status.Conditions, clusterv1alpha1.ClusterConditionReady, metav1.ConditionFalse) {
+						return FailoverSchedule
+					}
+				}
+			}
+		}
+	} else { // ClusterResourceBinding
+		// TODO:
+		return Unknown
+	}
+
+	// should not reach here
+	return Unknown
 }
 
 func (s *Scheduler) scheduleNext() bool {
@@ -245,16 +308,25 @@ func (s *Scheduler) scheduleNext() bool {
 	defer s.queue.Done(key)
 	klog.Infof("Failover flag is: %v", Failover)
 
-	if s.triggerReschedule(key.(string)) {
-		err := s.rescheduleOne(key.(string))
-		klog.Infof("Trigger restart rescheduling")
-		s.handleErr(err, key)
+	var err error
+	switch s.getScheduleType(key.(string)) {
+	case FirstSchedule:
+		err = s.scheduleOne(key.(string))
+		klog.Infof("Start scheduling binding(%s)", key.(string))
+	case ReconcileSchedule: // share same logic with first schedule
+		err = s.scheduleOne(key.(string))
+		klog.Infof("Reschedule binding(%s) as placement changed", key.(string))
+	case FailoverSchedule:
+		if Failover {
+			err = s.rescheduleOne(key.(string))
+			klog.Infof("Reschedule binding(%s) as cluster failure", key.(string))
+		}
+	default:
+		err = fmt.Errorf("unknow schedule type")
+		klog.Warningf("Failed to identify scheduler type for binding(%s)", key.(string))
 	}
-	if !s.triggerReschedule(key.(string)) {
-		err := s.scheduleOne(key.(string))
-		klog.Infof("Trigger start scheduling")
-		s.handleErr(err, key)
-	}
+
+	s.handleErr(err, key)
 	return true
 }
 
@@ -397,15 +469,15 @@ func (s *Scheduler) updateCluster(_, newObj interface{}) {
 	klog.V(3).Infof("update event for cluster %s", newCluster.Name)
 	s.schedulerCache.UpdateCluster(newCluster)
 
-	for _, condition := range newCluster.Status.Conditions {
-		if condition.Type == clusterv1alpha1.ClusterConditionReady &&
-			condition.Status == metav1.ConditionFalse {
-			klog.Infof("%s is a failed cluster currently", newCluster.Name)
+	// Check if cluster becomes failure
+	if meta.IsStatusConditionPresentAndEqual(newCluster.Status.Conditions, clusterv1alpha1.ClusterConditionReady, metav1.ConditionFalse) {
+		klog.Infof("Found cluster(%s) failure and failover flag is %v", newCluster.Name, Failover)
+
+		if Failover { // Trigger reschedule on cluster failure only when flag is true.
 			s.expiredBindingInQueue(newCluster.Name)
 			return
 		}
 	}
-	klog.Infof("%s is not a ready currently", newCluster.Name)
 }
 
 func (s *Scheduler) deleteCluster(obj interface{}) {
