@@ -43,17 +43,17 @@ const (
 	maxRetries = 15
 )
 
-// ScheduleType defines the schedule type a binding object should be performed.
+// ScheduleType defines the schedule type of a binding object should be performed.
 type ScheduleType string
 
 const (
-	// FirstSchedule ... TODO
+	// FirstSchedule means the binding object hasn't been scheduled.
 	FirstSchedule ScheduleType = "FirstSchedule"
 
-	// ReconcileSchedule... TODO
+	// ReconcileSchedule means the binding object associated policy has been changed.
 	ReconcileSchedule ScheduleType = "ReconcileSchedule"
 
-	// FailoverSchedule... TODO
+	// FailoverSchedule means one of the cluster a binding object associated with becomes failure.
 	FailoverSchedule ScheduleType = "FailoverSchedule"
 
 	// AvoidSchedule means don't need to trigger scheduler.
@@ -594,7 +594,6 @@ func (s *Scheduler) getAvailableClusters(binding *workv1alpha1.ResourceBinding) 
 
 // rescheduleOne.
 func (s *Scheduler) rescheduleOne(key string) (err error) {
-
 	ns, name, err := cache.SplitMetaNamespaceKey(key)
 	if err != nil {
 		return err
