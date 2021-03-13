@@ -560,11 +560,11 @@ func (s *Scheduler) rescheduleOne(key string) (err error) {
 	reservedClusters, candidateClusters := s.failoverCandidateCluster(resourceBinding)
 	deltaLen := len(binding.Spec.Clusters) - len(reservedClusters)
 
-	klog.Infof("binding(%s/%s) has %d failure clusters, and got %d candidates", ns, name, len(candidateClusters))
+	klog.Infof("binding(%s/%s) has %d failure clusters, and got %d candidates", ns, name, deltaLen, len(candidateClusters))
 
 	// TODO: should schedule as much as possible?
 	if len(candidateClusters) < deltaLen {
-		klog.Warningf("ignore reschedule binding(%s/%s) as insufficient available cluster")
+		klog.Warningf("ignore reschedule binding(%s/%s) as insufficient available cluster", ns, name)
 		return nil
 	}
 
