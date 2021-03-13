@@ -49,10 +49,16 @@ type ScheduleType string
 const (
 	// FirstSchedule ... TODO
 	FirstSchedule ScheduleType = "FirstSchedule"
+
 	// ReconcileSchedule... TODO
 	ReconcileSchedule ScheduleType = "ReconcileSchedule"
+
 	// FailoverSchedule... TODO
 	FailoverSchedule ScheduleType = "FailoverSchedule"
+
+	// AvoidSchedule means don't need to trigger scheduler.
+	AvoidSchedule ScheduleType = "AvoidSchedule"
+
 	// Unknown means can't detect the schedule type
 	Unknown ScheduleType = "Unknown"
 )
@@ -295,8 +301,7 @@ func (s *Scheduler) getScheduleType(key string) ScheduleType {
 		return Unknown
 	}
 
-	// should not reach here
-	return Unknown
+	return AvoidSchedule
 }
 
 func (s *Scheduler) scheduleNext() bool {
