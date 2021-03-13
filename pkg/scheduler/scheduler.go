@@ -326,6 +326,8 @@ func (s *Scheduler) scheduleNext() bool {
 			err = s.rescheduleOne(key.(string))
 			klog.Infof("Reschedule binding(%s) as cluster failure", key.(string))
 		}
+	case AvoidSchedule:
+		klog.Infof("Don't need to schedule binding(%s)", key.(string))
 	default:
 		err = fmt.Errorf("unknow schedule type")
 		klog.Warningf("Failed to identify scheduler type for binding(%s)", key.(string))
