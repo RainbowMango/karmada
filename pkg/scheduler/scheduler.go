@@ -13,6 +13,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
+	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/client-go/dynamic"
 	"k8s.io/client-go/kubernetes"
@@ -526,70 +527,18 @@ func (s *Scheduler) expiredBindingInQueue(notReadyClusterName string) {
 	}
 }
 
-// sameClusterName method displays the same part of names in GetReadyClusters and ResourceBinding.spec.Clusters
-// when length of ClusterNames in ResourceBinding.spec is > 0
-func (s *Scheduler) sameClusterName(binding *workv1alpha1.ResourceBinding) (sameNameList []string, err error) {
-	clusterInfoSnapshot := s.schedulerCache.Snapshot()
-
-	if clusterInfoSnapshot.NumOfClusters() == 0 {
-		return nil, fmt.Errorf("no available cluster")
-	}
-	scheduledClusters := binding.Spec.Clusters
-
-	m := make(map[string]int)
-	for _, cluster := range scheduledClusters {
-		clusterName := cluster.Name
-		m[clusterName]++
-	}
-	for _, readyCluster := range clusterInfoSnapshot.GetReadyClusters() {
-		readyClusterName := readyCluster.Cluster().Name
-		klog.Infof("Current ready cluster is %s", readyClusterName)
-		times := m[readyClusterName]
-		if times == 1 {
-			sameNameList = append(sameNameList, readyClusterName)
-		}
-	}
-	klog.Infof("The reserved clusters are %v", sameNameList)
-	return sameNameList, nil
-}
-
-// diffClusterName is the Subtraction of GetReadyClusters and ResourceBinding.Spec.Clusters
-func (s *Scheduler) diffClusterName(binding *workv1alpha1.ResourceBinding, nameList []string) (diffNameList []string, err error) {
-
-	sameNameList, err := s.sameClusterName(binding)
-	if err != nil {
-		return nil, fmt.Errorf("")
-	}
-	m := make(map[string]int)
-
-	for _, sameName := range sameNameList {
-		m[sameName]++
+func (s Scheduler) failoverCandidateCluster(binding *workv1alpha1.ResourceBinding) (reserved sets.String, candidates sets.String) {
+	bindedCluster := sets.NewString()
+	for _, cluster := range binding.Spec.Clusters {
+		bindedCluster.Insert(cluster.Name)
 	}
 
-	for _, clusterName := range nameList {
-		times := m[clusterName]
-		if times == 0 {
-			diffNameList = append(diffNameList, clusterName)
-		}
+	availableCluster := sets.NewString()
+	for _, cluster := range s.schedulerCache.Snapshot().GetReadyClusters() {
+		availableCluster.Insert(cluster.Cluster().Name)
 	}
-	klog.Infof("The diffNameList are %v", diffNameList)
-	return diffNameList, nil
-}
 
-// getAvailableClusters finds the available clusters from GetReadyClusters judged by the cluster names in ResourceBinding.Spec.
-func (s *Scheduler) getAvailableClusters(binding *workv1alpha1.ResourceBinding) (availableClusters []string, err error) {
-	var readyClusterNameList []string //Subtraction of GetReadyClusters and same name clusters
-	clusterInfoSnapshot := s.schedulerCache.Snapshot()
-	for _, readyCluster := range clusterInfoSnapshot.GetReadyClusters() {
-		readyClusterName := readyCluster.Cluster().Name
-		readyClusterNameList = append(readyClusterNameList, readyClusterName)
-	}
-	//
-	availableClusters, err = s.diffClusterName(binding, readyClusterNameList)
-	if err != nil {
-		klog.Infof("Failed calculating available clusters")
-	}
-	return availableClusters, nil
+	return bindedCluster.Difference(availableCluster), availableCluster.Difference(bindedCluster)
 }
 
 // rescheduleOne.
@@ -608,40 +557,45 @@ func (s *Scheduler) rescheduleOne(key string) (err error) {
 	}
 
 	binding := resourceBinding.DeepCopy()
-	availableClusters, _ := s.getAvailableClusters(resourceBinding)
-	klog.Infof("Get available clusters %v", availableClusters)
-	reservedClusters, _ := s.sameClusterName(binding)
-	targetClusters := make([]workv1alpha1.TargetCluster, len(binding.Spec.Clusters))
+	reservedClusters, candidateClusters := s.failoverCandidateCluster(resourceBinding)
+	deltaLen := len(binding.Spec.Clusters) - len(reservedClusters)
 
-	for i, sameClusterName := range reservedClusters {
-		targetClusters[i] = workv1alpha1.TargetCluster{Name: sameClusterName}
+	klog.Infof("binding(%s/%s) has %d failure clusters, and got %d candidates", ns, name, len(candidateClusters))
+
+	// TODO: should schedule as much as possible?
+	if len(candidateClusters) < deltaLen {
+		klog.Warningf("ignore reschedule binding(%s/%s) as insufficient available cluster")
+		return nil
 	}
 
-	for j, clusterName := range availableClusters {
+	targetClusters := reservedClusters
 
-		// LabelSelector not matches.
-		curCluster, _ := s.clusterLister.Get(clusterName)
-		policyNamespace := util.GetLabelValue(binding.Labels, util.PropagationPolicyNamespaceLabel)
-		policyName := util.GetLabelValue(binding.Labels, util.PropagationPolicyNameLabel)
-		policy, _ := s.policyLister.PropagationPolicies(policyNamespace).Get(policyName)
+	for i := 0; i < deltaLen; i++ {
+		for clusterName := range candidateClusters {
+			curCluster, _ := s.clusterLister.Get(clusterName)
+			policyNamespace := util.GetLabelValue(binding.Labels, util.PropagationPolicyNamespaceLabel)
+			policyName := util.GetLabelValue(binding.Labels, util.PropagationPolicyNameLabel)
+			policy, _ := s.policyLister.PropagationPolicies(policyNamespace).Get(policyName)
 
-		if !util.ClusterMatches(curCluster, *policy.Spec.Placement.ClusterAffinity) {
-			if j == len(availableClusters)-1 {
-				klog.Infof("There are no appropriate member clusters for rescheduling")
-				break
-			} else {
+			if !util.ClusterMatches(curCluster, *policy.Spec.Placement.ClusterAffinity) {
 				continue
 			}
-		}
 
-		//LabelSelector matches. It will pass the changed targetClusters to the binding information.
-		if util.ClusterMatches(curCluster, *policy.Spec.Placement.ClusterAffinity) {
 			klog.Infof("Rescheduling %s/ %s to member cluster %s", binding.Namespace, binding.Name, clusterName)
-			targetClusters[len(binding.Spec.Clusters)-1] = workv1alpha1.TargetCluster{Name: clusterName}
+			targetClusters.Insert(clusterName)
+			candidateClusters.Delete(clusterName)
+
+			// break as soon as find a result
 			break
 		}
 	}
-	binding.Spec.Clusters = targetClusters
+
+	// TODO(tinyma123) Check if the final result meets the spread constraints.
+
+	binding.Spec.Clusters = nil
+	for cluster := range targetClusters {
+		binding.Spec.Clusters = append(binding.Spec.Clusters, workv1alpha1.TargetCluster{Name: cluster})
+	}
 	klog.Infof("The final binding.Spec.Cluster values are: %v\n", binding.Spec.Clusters)
 
 	_, err = s.KarmadaClient.WorkV1alpha1().ResourceBindings(ns).Update(context.TODO(), binding, metav1.UpdateOptions{})
