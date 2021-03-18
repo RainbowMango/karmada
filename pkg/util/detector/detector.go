@@ -734,17 +734,17 @@ func (d *ResourceDetector) HandleClusterPropagationPolicyCreation(policy *policy
 
 // OnResourceBindingAdd handles object add event.
 func (d *ResourceDetector) OnResourceBindingAdd(obj interface{}) {
-	// currently do nothing.
-}
-
-// OnResourceBindingUpdate handles object update event and push the object to queue.
-func (d *ResourceDetector) OnResourceBindingUpdate(oldObj, newObj interface{}) {
-	key, err := ClusterWideKeyFunc(newObj)
+	key, err := ClusterWideKeyFunc(obj)
 	if err != nil {
 		return
 	}
 
 	d.bindingReconcileWorker.AddRateLimited(key)
+}
+
+// OnResourceBindingUpdate handles object update event and push the object to queue.
+func (d *ResourceDetector) OnResourceBindingUpdate(_, newObj interface{}) {
+	d.OnResourceBindingAdd(newObj)
 }
 
 // OnClusterResourceBindingDelete handles object delete event.
@@ -782,17 +782,17 @@ func (d *ResourceDetector) ReconcileResourceBinding(key util.QueueKey) error {
 
 // OnClusterResourceBindingAdd handles object add event.
 func (d *ResourceDetector) OnClusterResourceBindingAdd(obj interface{}) {
-	// currently do nothing.
-}
-
-// OnClusterResourceBindingUpdate handles object update event and push the object to queue.
-func (d *ResourceDetector) OnClusterResourceBindingUpdate(oldObj, newObj interface{}) {
-	key, err := ClusterWideKeyFunc(newObj)
+	key, err := ClusterWideKeyFunc(obj)
 	if err != nil {
 		return
 	}
 
 	d.clusterBindingReconcileWorker.AddRateLimited(key)
+}
+
+// OnClusterResourceBindingUpdate handles object update event and push the object to queue.
+func (d *ResourceDetector) OnClusterResourceBindingUpdate(oldObj, newObj interface{}) {
+	d.OnClusterResourceBindingAdd(newObj)
 }
 
 // OnResourceBindingDelete handles object delete event.
