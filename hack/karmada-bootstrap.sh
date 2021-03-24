@@ -80,6 +80,9 @@ function installCRDs() {
 util::install_tools sigs.k8s.io/kind v0.10.0
 
 #step1. create host cluster and member clusters in parallel
+bash hack/delete-cluster.sh ${HOST_CLUSTER_NAME} ${HOST_CLUSTER_KUBECONFIG}
+bash hack/delete-cluster.sh ${MEMBER_CLUSTER_1_NAME} ${MEMBER_CLUSTER_1_KUBECONFIG}
+bash hack/delete-cluster.sh ${MEMBER_CLUSTER_2_NAME} ${MEMBER_CLUSTER_2_KUBECONFIG}
 util::create_cluster ${HOST_CLUSTER_NAME} ${HOST_CLUSTER_KUBECONFIG} ${CLUSTER_VERSION} ${KIND_LOG_FILE}
 util::create_cluster ${MEMBER_CLUSTER_1_NAME} ${MEMBER_CLUSTER_1_KUBECONFIG} ${CLUSTER_VERSION} ${KIND_LOG_FILE}
 util::create_cluster ${MEMBER_CLUSTER_2_NAME} ${MEMBER_CLUSTER_2_KUBECONFIG} ${CLUSTER_VERSION} ${KIND_LOG_FILE}
