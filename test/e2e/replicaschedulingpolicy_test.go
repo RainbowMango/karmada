@@ -56,9 +56,9 @@ var _ = ginkgo.Describe("[ReplicaScheduling] replica scheduling testing", func()
 				gomega.Expect(err).ShouldNot(gomega.HaveOccurred())
 			})
 		})
-	})
 
-	ginkgo.Context("replicas should be allocated via weight list", func() {
+		ginkgo.It("replicas should be allocated via weight list", func() {
 
+		})
 	})
 })
