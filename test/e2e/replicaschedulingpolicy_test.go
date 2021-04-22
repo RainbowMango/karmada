@@ -1,12 +1,15 @@
 package e2e
 
 import (
+	"context"
 	"fmt"
+
+	"github.com/onsi/ginkgo"
+	"github.com/onsi/gomega"
+	"k8s.io/apimachinery/pkg/util/rand"
 
 	policyv1alpha1 "github.com/karmada-io/karmada/pkg/apis/policy/v1alpha1"
 	"github.com/karmada-io/karmada/test/helper"
-	"github.com/onsi/ginkgo"
-	"k8s.io/apimachinery/pkg/util/rand"
 )
 
 var _ = ginkgo.Describe("[ReplicaScheduling] replica scheduling testing", func() {
@@ -38,6 +41,8 @@ var _ = ginkgo.Describe("[ReplicaScheduling] replica scheduling testing", func()
 		})
 
 		ginkgo.By(fmt.Sprintf("Creating deployment(%s/%s)", resourceTemplate.Namespace, resourceTemplate.Name), func() {
+			err := controlPlaneClient.Create(context.TODO(), resourceTemplate)
+			gomega.Expect(err).ShouldNot(gomega.HaveOccurred())
 
 		})
 
@@ -46,7 +51,8 @@ var _ = ginkgo.Describe("[ReplicaScheduling] replica scheduling testing", func()
 		})
 
 		ginkgo.By(fmt.Sprintf("Deleting deployment(%s/%s)", resourceTemplate.Namespace, resourceTemplate.Name), func() {
-
+			err := controlPlaneClient.Delete(context.TODO(), resourceTemplate)
+			gomega.Expect(err).ShouldNot(gomega.HaveOccurred())
 		})
 	})
 
