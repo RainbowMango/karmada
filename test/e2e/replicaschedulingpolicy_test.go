@@ -40,19 +40,21 @@ var _ = ginkgo.Describe("[ReplicaScheduling] replica scheduling testing", func()
 
 		})
 
-		ginkgo.By(fmt.Sprintf("Creating deployment(%s/%s)", resourceTemplate.Namespace, resourceTemplate.Name), func() {
-			err := controlPlaneClient.Create(context.TODO(), resourceTemplate)
-			gomega.Expect(err).ShouldNot(gomega.HaveOccurred())
+		ginkgo.It("total replicas should follow the policy", func() {
+			ginkgo.By(fmt.Sprintf("Creating deployment(%s/%s)", resourceTemplate.Namespace, resourceTemplate.Name), func() {
+				err := controlPlaneClient.Create(context.TODO(), resourceTemplate)
+				gomega.Expect(err).ShouldNot(gomega.HaveOccurred())
 
-		})
+			})
 
-		ginkgo.By(fmt.Sprintf("Checking total replicas should be euqal to %d", createdReplicaSchedulingPolicy.Spec.TotalReplicas), func() {
+			ginkgo.By(fmt.Sprintf("Checking total replicas should be euqal to %d", createdReplicaSchedulingPolicy.Spec.TotalReplicas), func() {
 
-		})
+			})
 
-		ginkgo.By(fmt.Sprintf("Deleting deployment(%s/%s)", resourceTemplate.Namespace, resourceTemplate.Name), func() {
-			err := controlPlaneClient.Delete(context.TODO(), resourceTemplate)
-			gomega.Expect(err).ShouldNot(gomega.HaveOccurred())
+			ginkgo.By(fmt.Sprintf("Deleting deployment(%s/%s)", resourceTemplate.Namespace, resourceTemplate.Name), func() {
+				err := controlPlaneClient.Delete(context.TODO(), resourceTemplate)
+				gomega.Expect(err).ShouldNot(gomega.HaveOccurred())
+			})
 		})
 	})
 
