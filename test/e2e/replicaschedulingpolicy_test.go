@@ -17,12 +17,28 @@ var _ = ginkgo.Describe("[ReplicaScheduling] replica scheduling testing", func()
 	// The replicas specified in resource template will be discarded when there is a RSP.
 	ginkgo.Context("total replicas should follow the policy", func() {
 		resourceTemplate := helper.NewDeployment(testNamespace, rand.String(RandomStrLength))
-		// createdClusterPropagationPolicy := &policyv1alpha1.ClusterPropagationPolicy{}
+		selector := []policyv1alpha1.ResourceSelector{
+			{
+				APIVersion: resourceTemplate.APIVersion,
+				Kind:       resourceTemplate.Kind,
+				Namespace:  resourceTemplate.Namespace,
+				Name:       resourceTemplate.Name,
+			},
+		}
+		placement := policyv1alpha1.Placement{
+			ClusterAffinity: &policyv1alpha1.ClusterAffinity{
+				ClusterNames: []string{clusters[0].ClusterName, clusters[1].ClusterName},
+			},
+		}
+		createdClusterPropagationPolicy := helper.NewClusterPropagationPolicy(rand.String(RandomStrLength), selector, placement)
 		createdReplicaSchedulingPolicy := &policyv1alpha1.ReplicaSchedulingPolicy{}
 
 		// Deploy ClusterPropagationPolicy
 		ginkgo.BeforeEach(func() {
-
+			ginkgo.By(fmt.Sprintf("Creating ClusterPropagationPolicy(%s)", createdClusterPropagationPolicy.Name), func() {
+				err := controlPlaneClient.Create(context.TODO(), createdClusterPropagationPolicy)
+				gomega.Expect(err).ShouldNot(gomega.HaveOccurred())
+			})
 		})
 
 		// Deploy ReplicaSchedulingPolicy
@@ -32,12 +48,14 @@ var _ = ginkgo.Describe("[ReplicaScheduling] replica scheduling testing", func()
 
 		// Cleanup ReplicaSchedulingPolicy
 		ginkgo.AfterEach(func() {
-
 		})
 
 		// Cleanup ClusterPropagationPolicy
 		ginkgo.AfterEach(func() {
-
+			ginkgo.By(fmt.Sprintf("Deleting ClusterPropagationPolicy(%s)", createdClusterPropagationPolicy.Name), func() {
+				err := controlPlaneClient.Delete(context.TODO(), createdClusterPropagationPolicy)
+				gomega.Expect(err).ShouldNot(gomega.HaveOccurred())
+			})
 		})
 
 		ginkgo.It("total replicas should follow the policy", func() {
