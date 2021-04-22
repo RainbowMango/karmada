@@ -17,6 +17,12 @@ var _ = ginkgo.Describe("[ReplicaScheduling] replica scheduling testing", func()
 
 	// The replicas specified in resource template will be discarded when there is a RSP.
 	ginkgo.Context("total replicas should follow the policy", func() {
+		ginkgo.By(fmt.Sprintf("testing clusters"), func() {
+			clusterLen := len(clusters)
+			if clusterLen < MinimumCluster {
+				klog.Errorf("Needs at least %d member clusters to run, but got: %d", MinimumCluster, len(clusters))
+			}
+		})
 		clusterLen := len(clusters)
 		if clusterLen < MinimumCluster {
 			klog.Errorf("Needs at least %d member clusters to run, but got: %d", MinimumCluster, len(clusters))
