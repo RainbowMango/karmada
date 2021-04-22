@@ -71,3 +71,17 @@ func newConstraintsClusterPolicy(policyName, apiVersion, kind, resourceName stri
 		},
 	}
 }
+
+// NewClusterPropagationPolicy builds a ClusterPropagationPolicy instance with default scheduler.
+func NewClusterPropagationPolicy(policyName string, selectors []policyv1alpha1.ResourceSelector, placement policyv1alpha1.Placement) *policyv1alpha1.ClusterPropagationPolicy {
+	return &policyv1alpha1.ClusterPropagationPolicy{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: policyName,
+		},
+		Spec: policyv1alpha1.PropagationSpec{
+			ResourceSelectors: selectors,
+			Placement:         placement,
+			SchedulerName:     "default-scheduler",
+		},
+	}
+}
