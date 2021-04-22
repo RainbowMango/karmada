@@ -39,7 +39,8 @@ var _ = ginkgo.Describe("[ReplicaScheduling] replica scheduling testing", func()
 		}
 		placement := policyv1alpha1.Placement{
 			ClusterAffinity: &policyv1alpha1.ClusterAffinity{
-				ClusterNames: []string{clusters[0].ClusterName, clusters[1].ClusterName},
+				// ClusterNames: []string{clusters[0].ClusterName, clusters[1].ClusterName},
+				ClusterNames: []string{},
 			},
 		}
 		createdClusterPropagationPolicy := helper.NewClusterPropagationPolicy(rand.String(RandomStrLength), selector, placement)
@@ -75,6 +76,10 @@ var _ = ginkgo.Describe("[ReplicaScheduling] replica scheduling testing", func()
 				err := controlPlaneClient.Create(context.TODO(), resourceTemplate)
 				gomega.Expect(err).ShouldNot(gomega.HaveOccurred())
 
+				clusterLen := len(clusters)
+				if clusterLen < MinimumCluster {
+					klog.Errorf("Needs at least %d member clusters to run, but got: %d", MinimumCluster, len(clusters))
+				}
 			})
 
 			ginkgo.By(fmt.Sprintf("Checking total replicas should be euqal to %d", createdReplicaSchedulingPolicy.Spec.TotalReplicas), func() {
