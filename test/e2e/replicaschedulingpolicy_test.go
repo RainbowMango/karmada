@@ -7,6 +7,7 @@ import (
 	"github.com/onsi/ginkgo"
 	"github.com/onsi/gomega"
 	"k8s.io/apimachinery/pkg/util/rand"
+	"k8s.io/klog/v2"
 
 	policyv1alpha1 "github.com/karmada-io/karmada/pkg/apis/policy/v1alpha1"
 	"github.com/karmada-io/karmada/test/helper"
@@ -16,6 +17,11 @@ var _ = ginkgo.Describe("[ReplicaScheduling] replica scheduling testing", func()
 
 	// The replicas specified in resource template will be discarded when there is a RSP.
 	ginkgo.Context("total replicas should follow the policy", func() {
+		clusterLen := len(clusters)
+		if clusterLen < MinimumCluster {
+			klog.Errorf("Needs at least %d member clusters to run, but got: %d", MinimumCluster, len(clusters))
+		}
+
 		resourceTemplate := helper.NewDeployment(testNamespace, rand.String(RandomStrLength))
 		selector := []policyv1alpha1.ResourceSelector{
 			{
