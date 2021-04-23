@@ -3,6 +3,7 @@ package e2e
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	"github.com/onsi/ginkgo"
 	"github.com/onsi/gomega"
@@ -17,18 +18,11 @@ var _ = ginkgo.Describe("[ReplicaScheduling] replica scheduling testing", func()
 
 	// The replicas specified in resource template will be discarded when there is a RSP.
 	ginkgo.Context("total replicas should follow the policy", func() {
-		ginkgo.By(fmt.Sprintf("testing clusters"), func() {
-			clusterLen := len(clusters)
-			if clusterLen < MinimumCluster {
-				klog.Errorf("Needs at least %d member clusters to run, but got: %d", MinimumCluster, len(clusters))
-			}
-		})
-		clusterLen := len(clusters)
-		if clusterLen < MinimumCluster {
-			klog.Errorf("Needs at least %d member clusters to run, but got: %d", MinimumCluster, len(clusters))
-		}
-
 		resourceTemplate := helper.NewDeployment(testNamespace, rand.String(RandomStrLength))
+		// we will select two member clusters for this test.
+		var selectedClusters []string
+		selectedClustersLen := 2
+
 		selector := []policyv1alpha1.ResourceSelector{
 			{
 				APIVersion: resourceTemplate.APIVersion,
@@ -39,8 +33,7 @@ var _ = ginkgo.Describe("[ReplicaScheduling] replica scheduling testing", func()
 		}
 		placement := policyv1alpha1.Placement{
 			ClusterAffinity: &policyv1alpha1.ClusterAffinity{
-				// ClusterNames: []string{clusters[0].ClusterName, clusters[1].ClusterName},
-				ClusterNames: []string{},
+				ClusterNames: []string{"member1", "member2"},
 			},
 		}
 		createdClusterPropagationPolicy := helper.NewClusterPropagationPolicy(rand.String(RandomStrLength), selector, placement)
@@ -48,6 +41,15 @@ var _ = ginkgo.Describe("[ReplicaScheduling] replica scheduling testing", func()
 
 		// Deploy ClusterPropagationPolicy
 		ginkgo.BeforeEach(func() {
+			// We don't care total number of clusters we have, we only select two of them.
+			ginkgo.By(fmt.Sprintf("Selecting clusters"), func() {
+				for i := 0; i < 2 && i < len(clusters); i++ {
+					selectedClusters = append(selectedClusters, clusters[i].Name)
+				}
+				gomega.Expect(selectedClusters).Should(gomega.HaveLen(selectedClustersLen))
+				klog.Infof("Selected clusters: %s", strings.Join(selectedClusters, ","))
+			})
+
 			ginkgo.By(fmt.Sprintf("Creating ClusterPropagationPolicy(%s)", createdClusterPropagationPolicy.Name), func() {
 				err := controlPlaneClient.Create(context.TODO(), createdClusterPropagationPolicy)
 				gomega.Expect(err).ShouldNot(gomega.HaveOccurred())
