@@ -43,6 +43,7 @@ var _ = ginkgo.Describe("[ReplicaScheduling] replica scheduling testing", func()
 		ginkgo.BeforeEach(func() {
 			// We don't care total number of clusters we have, we only select two of them.
 			ginkgo.By(fmt.Sprintf("Selecting clusters"), func() {
+				selectedClusters = make([]string, 0, 2)
 				for i := 0; i < 2 && i < len(clusters); i++ {
 					selectedClusters = append(selectedClusters, clusters[i].Name)
 				}
