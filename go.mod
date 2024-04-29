@@ -57,7 +57,7 @@ require (
 	sigs.k8s.io/custom-metrics-apiserver v1.28.1-0.20240425173932-1a855fe8c789
 	sigs.k8s.io/kind v0.20.0
 	sigs.k8s.io/mcs-api v0.1.0
-	sigs.k8s.io/metrics-server v0.6.1-0.20230706083104-796fc0f832c1
+	sigs.k8s.io/metrics-server v0.7.1
 	sigs.k8s.io/structured-merge-diff/v4 v4.4.1
 	sigs.k8s.io/yaml v1.4.0
 )
