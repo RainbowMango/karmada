@@ -98,6 +98,7 @@ func (o *Options) Config() (*metricsadapter.MetricsServer, error) {
 	metricsAdapter.OpenAPIV3Config = genericapiserver.DefaultOpenAPIV3Config(generatedopenapi.GetOpenAPIDefinitions, openapinamer.NewDefinitionNamer(api.Scheme))
 	metricsAdapter.OpenAPIConfig.Info.Title = "karmada-metrics-adapter"
 	metricsAdapter.OpenAPIConfig.Info.Version = "1.0.0"
+	metricsAdapter.RemoteKubeConfigFile = o.KubeConfig
 
 	server, err := metricsAdapter.Server()
 	if err != nil {
