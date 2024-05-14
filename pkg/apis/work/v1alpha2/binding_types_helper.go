@@ -204,3 +204,12 @@ func (s *ResourceBindingSpec) SchedulingSuspended() bool {
 
 	return *s.Suspension.Scheduling
 }
+
+// ExplicitPriority returns the explicit priority declared
+// by '.spec.SchedulePriority.Priority'.
+func (s *ResourceBindingSpec) ExplicitPriority() int32 {
+	if s.SchedulePriority == nil {
+		return 0
+	}
+	return s.SchedulePriority.Priority
+}
