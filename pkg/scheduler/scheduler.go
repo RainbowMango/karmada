@@ -36,7 +36,6 @@ import (
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/tools/record"
-	"k8s.io/client-go/util/workqueue"
 	"k8s.io/klog/v2"
 
 	clusterv1alpha1 "github.com/karmada-io/karmada/pkg/apis/cluster/v1alpha1"
@@ -53,6 +52,7 @@ import (
 	"github.com/karmada-io/karmada/pkg/scheduler/framework"
 	frameworkplugins "github.com/karmada-io/karmada/pkg/scheduler/framework/plugins"
 	"github.com/karmada-io/karmada/pkg/scheduler/framework/runtime"
+	internalqueue "github.com/karmada-io/karmada/pkg/scheduler/internal/queue"
 	"github.com/karmada-io/karmada/pkg/scheduler/metrics"
 	"github.com/karmada-io/karmada/pkg/sharedcli/ratelimiterflag"
 	"github.com/karmada-io/karmada/pkg/util"
@@ -95,9 +95,8 @@ type Scheduler struct {
 	// clusterReconcileWorker reconciles cluster changes to trigger corresponding
 	// ResourceBinding/ClusterResourceBinding rescheduling.
 	clusterReconcileWorker util.AsyncWorker
-	// TODO: implement a priority scheduling queue
-	queue workqueue.TypedRateLimitingInterface[any]
 
+	queue          internalqueue.SchedulingQueue
 	Algorithm      core.ScheduleAlgorithm
 	schedulerCache schedulercache.Cache
 
@@ -128,7 +127,7 @@ type schedulerOptions struct {
 	schedulerEstimatorServicePrefix string
 	// schedulerName is the name of the scheduler. Default is "default-scheduler".
 	schedulerName string
-	//enableEmptyWorkloadPropagation represents whether allow workload with replicas 0 propagated to member clusters should be enabled
+	// enableEmptyWorkloadPropagation represents whether allow workload with replicas 0 propagated to member clusters should be enabled
 	enableEmptyWorkloadPropagation bool
 	// outOfTreeRegistry represents the registry of out-of-tree plugins
 	outOfTreeRegistry runtime.Registry
@@ -239,7 +238,7 @@ func NewScheduler(dynamicClient dynamic.Interface, karmadaClient karmadaclientse
 	for _, opt := range opts {
 		opt(&options)
 	}
-	queue := workqueue.NewTypedRateLimitingQueueWithConfig(ratelimiterflag.DefaultControllerRateLimiter[any](options.RateLimiterOptions), workqueue.TypedRateLimitingQueueConfig[any]{Name: "scheduler-queue"})
+	queue := internalqueue.NewSchedulingQueue(internalqueue.WithRateLimitingOptions(options.RateLimiterOptions))
 	registry := frameworkplugins.NewInTreeRegistry()
 	if err := registry.Merge(options.outOfTreeRegistry); err != nil {
 		return nil, err
@@ -310,8 +309,9 @@ func (s *Scheduler) Run(ctx context.Context) {
 
 	go wait.Until(s.worker, time.Second, stopCh)
 
+	s.queue.Run()
 	<-stopCh
-	s.queue.ShutDown()
+	s.queue.Close()
 }
 
 func (s *Scheduler) worker() {
@@ -320,15 +320,15 @@ func (s *Scheduler) worker() {
 }
 
 func (s *Scheduler) scheduleNext() bool {
-	key, shutdown := s.queue.Get()
+	bindingInfo, shutdown := s.queue.Pop()
 	if shutdown {
 		klog.Errorf("Fail to pop item from queue")
 		return false
 	}
-	defer s.queue.Done(key)
+	defer s.queue.Done(bindingInfo)
 
-	err := s.doSchedule(key.(string))
-	s.handleErr(err, key)
+	err := s.doSchedule(bindingInfo.NamespacedKey)
+	s.handleErr(err, bindingInfo)
 	return true
 }
 
@@ -759,13 +759,18 @@ func (s *Scheduler) patchScheduleResultForClusterResourceBinding(oldBinding *wor
 	return nil
 }
 
-func (s *Scheduler) handleErr(err error, key interface{}) {
+func (s *Scheduler) handleErr(err error, bindingInfo *internalqueue.QueuedBindingInfo) {
 	if err == nil || apierrors.HasStatusCause(err, corev1.NamespaceTerminatingCause) {
-		s.queue.Forget(key)
+		s.queue.Forget(bindingInfo)
 		return
 	}
 
-	s.queue.AddRateLimited(key)
+	var unschedulableErr *framework.UnschedulableError
+	if !errors.As(err, &unschedulableErr) {
+		s.queue.PushUnschedulableIfNotPresent(bindingInfo)
+	} else {
+		s.queue.PushBackoffIfNotPresent(bindingInfo)
+	}
 	metrics.CountSchedulerBindings(metrics.ScheduleAttemptFailure)
 }
 

@@ -25,10 +25,12 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	dynamicfake "k8s.io/client-go/dynamic/fake"
 	"k8s.io/client-go/kubernetes/fake"
+	"k8s.io/client-go/tools/cache"
 	"k8s.io/component-base/metrics/testutil"
 
 	workv1alpha2 "github.com/karmada-io/karmada/pkg/apis/work/v1alpha2"
 	karmadafake "github.com/karmada-io/karmada/pkg/generated/clientset/versioned/fake"
+	internalqueue "github.com/karmada-io/karmada/pkg/scheduler/internal/queue"
 	"github.com/karmada-io/karmada/pkg/scheduler/metrics"
 )
 
@@ -69,10 +71,18 @@ var (
 		scheduler.onClusterResourceBindingRequeue(crb, metrics.ClusterChanged)
 	}
 	scheduleAttemptSuccess = func(scheduler *Scheduler, obj interface{}) {
-		scheduler.handleErr(nil, obj)
+		rb := obj.(*workv1alpha2.ResourceBinding)
+		scheduler.handleErr(nil, &internalqueue.QueuedBindingInfo{
+			NamespacedKey: cache.ObjectName{Namespace: rb.Namespace, Name: rb.Namespace}.String(),
+			Priority:      rb.Spec.ExplicitPriority(),
+		})
 	}
 	scheduleAttemptFailure = func(scheduler *Scheduler, obj interface{}) {
-		scheduler.handleErr(fmt.Errorf("schedule attempt failure"), obj)
+		rb := obj.(*workv1alpha2.ResourceBinding)
+		scheduler.handleErr(fmt.Errorf("schedule attempt failure"), &internalqueue.QueuedBindingInfo{
+			NamespacedKey: cache.ObjectName{Namespace: rb.Namespace, Name: rb.Namespace}.String(),
+			Priority:      rb.Spec.ExplicitPriority(),
+		})
 	}
 )
 

@@ -35,14 +35,15 @@ import (
 	"k8s.io/client-go/kubernetes/scheme"
 	clienttesting "k8s.io/client-go/testing"
 	"k8s.io/client-go/tools/record"
-	"k8s.io/client-go/util/workqueue"
 
 	policyv1alpha1 "github.com/karmada-io/karmada/pkg/apis/policy/v1alpha1"
 	workv1alpha2 "github.com/karmada-io/karmada/pkg/apis/work/v1alpha2"
+	"github.com/karmada-io/karmada/pkg/features"
 	karmadafake "github.com/karmada-io/karmada/pkg/generated/clientset/versioned/fake"
 	workv1alpha2lister "github.com/karmada-io/karmada/pkg/generated/listers/work/v1alpha2"
 	"github.com/karmada-io/karmada/pkg/scheduler/core"
 	schedulercore "github.com/karmada-io/karmada/pkg/scheduler/core"
+	internalqueue "github.com/karmada-io/karmada/pkg/scheduler/internal/queue"
 	"github.com/karmada-io/karmada/pkg/sharedcli/ratelimiterflag"
 	"github.com/karmada-io/karmada/pkg/util"
 	"github.com/karmada-io/karmada/pkg/util/grpcconnection"
@@ -1065,26 +1066,31 @@ func TestWorkerAndScheduleNext(t *testing.T) {
 	testCases := []struct {
 		name         string
 		key          string
+		priority     int32
 		shutdown     bool
 		expectResult bool
 	}{
 		{
 			name:         "Schedule ResourceBinding",
 			key:          "default/test-binding",
+			priority:     10,
 			shutdown:     false,
 			expectResult: true,
 		},
 		{
 			name:         "Schedule ClusterResourceBinding",
 			key:          "test-cluster-binding",
+			priority:     5,
 			shutdown:     false,
 			expectResult: true,
 		},
 	}
 
+	// enable "PriorityBasedScheduling" feature gate.
+	_ = features.FeatureGate.Set("PriorityBasedScheduling=true")
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			queue := workqueue.NewTypedRateLimitingQueue[any](workqueue.DefaultTypedControllerRateLimiter[any]())
+			queue := internalqueue.NewSchedulingQueue()
 			bindingLister := &fakeBindingLister{binding: resourceBinding}
 			clusterBindingLister := &fakeClusterBindingLister{binding: clusterResourceBinding}
 
@@ -1110,10 +1116,13 @@ func TestWorkerAndScheduleNext(t *testing.T) {
 				eventRecorder:        eventRecorder,
 			}
 
-			s.queue.Add(tc.key)
+			s.queue.Push(&internalqueue.QueuedBindingInfo{
+				NamespacedKey: tc.key,
+				Priority:      tc.priority,
+			})
 
 			if tc.shutdown {
-				s.queue.ShutDown()
+				s.queue.Close()
 			}
 
 			result := s.scheduleNext()

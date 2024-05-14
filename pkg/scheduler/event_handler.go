@@ -33,6 +33,7 @@ import (
 	clusterv1alpha1 "github.com/karmada-io/karmada/pkg/apis/cluster/v1alpha1"
 	policyv1alpha1 "github.com/karmada-io/karmada/pkg/apis/policy/v1alpha1"
 	workv1alpha2 "github.com/karmada-io/karmada/pkg/apis/work/v1alpha2"
+	internalqueue "github.com/karmada-io/karmada/pkg/scheduler/internal/queue"
 	"github.com/karmada-io/karmada/pkg/scheduler/metrics"
 	"github.com/karmada-io/karmada/pkg/util"
 	"github.com/karmada-io/karmada/pkg/util/fedinformer"
@@ -117,14 +118,32 @@ func (s *Scheduler) resourceBindingEventFilter(obj interface{}) bool {
 		util.GetLabelValue(accessor.GetLabels(), workv1alpha2.BindingManagedByLabel) != ""
 }
 
+func newQueuedBindingInfo(obj interface{}) *internalqueue.QueuedBindingInfo {
+	switch t := obj.(type) {
+	case *workv1alpha2.ResourceBinding:
+		return &internalqueue.QueuedBindingInfo{
+			NamespacedKey: cache.ObjectName{Namespace: t.GetNamespace(), Name: t.GetName()}.String(),
+			Priority:      t.Spec.ExplicitPriority(),
+		}
+	case *workv1alpha2.ClusterResourceBinding:
+		return &internalqueue.QueuedBindingInfo{
+			NamespacedKey: t.GetName(),
+			Priority:      t.Spec.ExplicitPriority(),
+		}
+	}
+
+	return nil
+}
+
 func (s *Scheduler) onResourceBindingAdd(obj interface{}) {
-	key, err := cache.MetaNamespaceKeyFunc(obj)
-	if err != nil {
-		klog.Errorf("couldn't get key for object %#v: %v", obj, err)
+	bindingInfo := newQueuedBindingInfo(obj)
+	if bindingInfo == nil {
+		// shouldn't happen
+		klog.Errorf("couldn't convert to QueuedBindingInfo %#v", obj)
 		return
 	}
 
-	s.queue.Add(key)
+	s.queue.Push(bindingInfo)
 	metrics.CountSchedulerBindings(metrics.BindingAdd)
 }
 
@@ -150,35 +169,32 @@ func (s *Scheduler) onResourceBindingUpdate(old, cur interface{}) {
 		return
 	}
 
-	key, err := cache.MetaNamespaceKeyFunc(cur)
-	if err != nil {
-		klog.Errorf("couldn't get key for object %#v: %v", cur, err)
+	bindingInfo := newQueuedBindingInfo(cur)
+	if bindingInfo == nil {
+		// shouldn't happen
+		klog.Errorf("couldn't convert to QueuedBindingInfo %#v", cur)
 		return
 	}
 
-	s.queue.Add(key)
+	s.queue.Push(bindingInfo)
 	metrics.CountSchedulerBindings(metrics.BindingUpdate)
 }
 
 func (s *Scheduler) onResourceBindingRequeue(binding *workv1alpha2.ResourceBinding, event string) {
-	key, err := cache.MetaNamespaceKeyFunc(binding)
-	if err != nil {
-		klog.Errorf("couldn't get key for ResourceBinding(%s/%s): %v", binding.Namespace, binding.Name, err)
-		return
-	}
 	klog.Infof("Requeue ResourceBinding(%s/%s) due to event(%s).", binding.Namespace, binding.Name, event)
-	s.queue.Add(key)
+	s.queue.Push(&internalqueue.QueuedBindingInfo{
+		NamespacedKey: cache.ObjectName{Namespace: binding.Namespace, Name: binding.Name}.String(),
+		Priority:      binding.Spec.ExplicitPriority(),
+	})
 	metrics.CountSchedulerBindings(event)
 }
 
 func (s *Scheduler) onClusterResourceBindingRequeue(clusterResourceBinding *workv1alpha2.ClusterResourceBinding, event string) {
-	key, err := cache.MetaNamespaceKeyFunc(clusterResourceBinding)
-	if err != nil {
-		klog.Errorf("couldn't get key for ClusterResourceBinding(%s): %v", clusterResourceBinding.Name, err)
-		return
-	}
 	klog.Infof("Requeue ClusterResourceBinding(%s) due to event(%s).", clusterResourceBinding.Name, event)
-	s.queue.Add(key)
+	s.queue.Push(&internalqueue.QueuedBindingInfo{
+		NamespacedKey: clusterResourceBinding.Name,
+		Priority:      clusterResourceBinding.Spec.ExplicitPriority(),
+	})
 	metrics.CountSchedulerBindings(event)
 }
 
