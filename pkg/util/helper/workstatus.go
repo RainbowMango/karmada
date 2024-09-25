@@ -233,21 +233,25 @@ func assembleWorkStatus(works []workv1alpha1.Work, objRef workv1alpha2.ObjectRef
 
 		*/
 		// Demo: trying to parse the generation out with template: '{.generation}'
+		if aggregatedStatus.Status.Raw == nil {
+			klog.Infof("[JUSTFORDEBUG] Waiting status")
+			continue
+		}
 		tmplate := "{.generation}"
 		j := jsonpath.New("demo")
 		j.AllowMissingKeys(false)
 		err = j.Parse(tmplate)
 		if err != nil {
-			klog.Errorf("[JUSTFORDEBUG]Parse template %s failed. Error: %v.", tmplate, err)
+			klog.Errorf("[JUSTFORDEBUG] Parse template %s failed. Error: %v.", tmplate, err)
 			continue
 		}
 		buf := new(bytes.Buffer)
 		err = j.Execute(buf, aggregatedStatus.Status.Raw)
 		if err != nil {
-			klog.Errorf("[JUSTFORDEBUG]Execute template %s failed. Error: %v.", tmplate, err)
+			klog.Errorf("[JUSTFORDEBUG] Execute template %s failed. Error: %v.", tmplate, err)
 			continue
 		}
-		klog.Infof("Get Result: %s", buf.String())
+		klog.Infof("[JUSTFORDEBUG] Get Result: %s", buf.String())
 	}
 
 	sort.Slice(statuses, func(i, j int) bool {
