@@ -253,6 +253,8 @@ func assembleWorkStatus(works []workv1alpha1.Work, objRef workv1alpha2.ObjectRef
 		unmarshalled := make(map[string]interface{})
 		json.Unmarshal(aggregatedStatus.Status.Raw, unmarshalled)
 
+		klog.Infof("[JUSTFORDEBUG] unmarshalled data: %v", unmarshalled)
+
 		// err = j.Execute(buf, aggregatedStatus.Status.Raw) // not work: generation not found
 		err = j.Execute(buf, unmarshalled)
 		if err != nil {
