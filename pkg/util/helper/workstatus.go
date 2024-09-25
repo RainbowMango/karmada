@@ -233,7 +233,7 @@ func assembleWorkStatus(works []workv1alpha1.Work, objRef workv1alpha2.ObjectRef
 
 		*/
 		// Demo: trying to parse the generation out with template: '{.generation}'
-		if aggregatedStatus.Status.Raw == nil {
+		if aggregatedStatus.Status == nil || aggregatedStatus.Status.Raw == nil {
 			klog.Infof("[JUSTFORDEBUG] Waiting status")
 			continue
 		}
