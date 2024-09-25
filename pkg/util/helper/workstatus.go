@@ -249,7 +249,12 @@ func assembleWorkStatus(works []workv1alpha1.Work, objRef workv1alpha2.ObjectRef
 			continue
 		}
 		buf := new(bytes.Buffer)
-		err = j.Execute(buf, aggregatedStatus.Status.Raw)
+
+		unmarshalled := make(map[string]interface{})
+		json.Unmarshal(aggregatedStatus.Status.Raw, unmarshalled)
+
+		// err = j.Execute(buf, aggregatedStatus.Status.Raw) // not work: generation not found
+		err = j.Execute(buf, unmarshalled)
 		if err != nil {
 			klog.Errorf("[JUSTFORDEBUG] Execute template %s failed. Error: %v.", tmplate, err)
 			continue
