@@ -255,14 +255,18 @@ func assembleWorkStatus(works []workv1alpha1.Work, objRef workv1alpha2.ObjectRef
 
 		// klog.Infof("[JUSTFORDEBUG] unmarshalled data: %v", unmarshalled) // not work:  unmarshalled data: map[]
 
-		unstructuredObj := &unstructured.Unstructured{}
-		if err := unstructuredObj.UnmarshalJSON(aggregatedStatus.Status.Raw); err != nil {
-			klog.Errorf("[JUSTFORDEBUG] Failed to unmarshal work manifest, error is: %v", err)
-			continue
-		}
+		// unstructuredObj := &unstructured.Unstructured{}
+		// if err := unstructuredObj.UnmarshalJSON(aggregatedStatus.Status.Raw); err != nil {
+		//	klog.Errorf("[JUSTFORDEBUG] Failed to unmarshal work manifest, error is: %v", err) // not work: error is: Object 'Kind' is missing in
+		//	continue
+		//}
+
+		unmarshalled := make(map[string]interface{})
+		json.Unmarshal(aggregatedStatus.Status.Raw, &unmarshalled)
+		klog.Infof("[JUSTFORDEBUG] unmarshalled data: %v", unmarshalled) // not work:  unmarshalled data: map[]
 
 		// err = j.Execute(buf, aggregatedStatus.Status.Raw) // not work: generation not found
-		err = j.Execute(buf, unstructuredObj.Object)
+		err = j.Execute(buf, unmarshalled)
 		if err != nil {
 			klog.Errorf("[JUSTFORDEBUG] Execute template %s failed. Error: %v.", tmplate, err)
 			continue
