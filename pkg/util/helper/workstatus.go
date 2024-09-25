@@ -250,13 +250,19 @@ func assembleWorkStatus(works []workv1alpha1.Work, objRef workv1alpha2.ObjectRef
 		}
 		buf := new(bytes.Buffer)
 
-		unmarshalled := make(map[string]interface{})
-		json.Unmarshal(aggregatedStatus.Status.Raw, unmarshalled)
+		// unmarshalled := make(map[string]interface{})
+		// json.Unmarshal(aggregatedStatus.Status.Raw, unmarshalled)
 
-		klog.Infof("[JUSTFORDEBUG] unmarshalled data: %v", unmarshalled)
+		// klog.Infof("[JUSTFORDEBUG] unmarshalled data: %v", unmarshalled) // not work:  unmarshalled data: map[]
+
+		unstructuredObj := &unstructured.Unstructured{}
+		if err := unstructuredObj.UnmarshalJSON(aggregatedStatus.Status.Raw); err != nil {
+			klog.Errorf("[JUSTFORDEBUG] Failed to unmarshal work manifest, error is: %v", err)
+			continue
+		}
 
 		// err = j.Execute(buf, aggregatedStatus.Status.Raw) // not work: generation not found
-		err = j.Execute(buf, unmarshalled)
+		err = j.Execute(buf, unstructuredObj.Object)
 		if err != nil {
 			klog.Errorf("[JUSTFORDEBUG] Execute template %s failed. Error: %v.", tmplate, err)
 			continue
