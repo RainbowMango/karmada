@@ -240,7 +240,7 @@ func assembleWorkStatus(works []workv1alpha1.Work, objRef workv1alpha2.ObjectRef
 
 		klog.Infof("[JUSTFORDEBUG] Raw status: %v", aggregatedStatus.Status.Raw)
 
-		tmplate := "{ .generation }"
+		tmplate := `{ .generation }`
 		j := jsonpath.New("demo")
 		j.AllowMissingKeys(false)
 		err = j.Parse(tmplate)
