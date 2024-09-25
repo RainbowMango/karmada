@@ -17,9 +17,11 @@ limitations under the License.
 package helper
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
+	"k8s.io/client-go/util/jsonpath"
 	"sort"
 
 	corev1 "k8s.io/api/core/v1"
@@ -214,6 +216,38 @@ func assembleWorkStatus(works []workv1alpha1.Work, objRef workv1alpha2.ObjectRef
 			}
 		}
 		statuses = append(statuses, aggregatedStatus)
+
+		/*
+			Flowing is one of the example of aggregated status:
+			  - applied: true
+			    clusterName: member1
+			    health: Healthy
+			    status:
+			      availableReplicas: 2
+			      generation: 2
+			      observedGeneration: 2
+			      readyReplicas: 2
+			      replicas: 2
+			      resourceTemplateGeneration: 2
+			      updatedReplicas: 2
+
+		*/
+		// Demo: trying to parse the generation out with template: '{.generation}'
+		tmplate := "{.generation}"
+		j := jsonpath.New("demo")
+		j.AllowMissingKeys(false)
+		err = j.Parse(tmplate)
+		if err != nil {
+			klog.Errorf("[JUSTFORDEBUG]Parse template %s failed. Error: %v.", tmplate, err)
+			continue
+		}
+		buf := new(bytes.Buffer)
+		err = j.Execute(buf, aggregatedStatus.Status.Raw)
+		if err != nil {
+			klog.Errorf("[JUSTFORDEBUG]Execute template %s failed. Error: %v.", tmplate, err)
+			continue
+		}
+		klog.Infof("Get Result: %s", buf.String())
 	}
 
 	sort.Slice(statuses, func(i, j int) bool {
