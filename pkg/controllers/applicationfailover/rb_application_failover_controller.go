@@ -233,7 +233,7 @@ func (c *RBApplicationFailoverController) SetupWithManager(mgr controllerruntime
 
 	return controllerruntime.NewControllerManagedBy(mgr).
 		For(&workv1alpha2.ResourceBinding{}, builder.WithPredicates(resourceBindingPredicateFn)).
-		WithOptions(controller.Options{RateLimiter: ratelimiterflag.DefaultControllerRateLimiter(c.RateLimiterOptions)}).
+		WithOptions(controller.Options{RateLimiter: ratelimiterflag.DefaultControllerRateLimiter[controllerruntime.Request](c.RateLimiterOptions)}).
 		Complete(c)
 }
 

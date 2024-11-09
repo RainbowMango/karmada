@@ -126,6 +126,6 @@ func (c *CRBGracefulEvictionController) SetupWithManager(mgr controllerruntime.M
 
 	return controllerruntime.NewControllerManagedBy(mgr).
 		For(&workv1alpha2.ClusterResourceBinding{}, builder.WithPredicates(clusterResourceBindingPredicateFn)).
-		WithOptions(controller.Options{RateLimiter: ratelimiterflag.DefaultControllerRateLimiter(c.RateLimiterOptions)}).
+		WithOptions(controller.Options{RateLimiter: ratelimiterflag.DefaultControllerRateLimiter[controllerruntime.Request](c.RateLimiterOptions)}).
 		Complete(c)
 }
