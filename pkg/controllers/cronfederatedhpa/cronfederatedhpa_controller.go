@@ -119,7 +119,7 @@ func (c *CronFHPAController) SetupWithManager(mgr controllerruntime.Manager) err
 	c.CronHandler = NewCronHandler(mgr.GetClient(), mgr.GetEventRecorderFor(ControllerName))
 	return controllerruntime.NewControllerManagedBy(mgr).
 		For(&autoscalingv1alpha1.CronFederatedHPA{}).
-		WithOptions(controller.Options{RateLimiter: ratelimiterflag.DefaultControllerRateLimiter(c.RateLimiterOptions)}).
+		WithOptions(controller.Options{RateLimiter: ratelimiterflag.DefaultControllerRateLimiter[controllerruntime.Request](c.RateLimiterOptions)}).
 		WithEventFilter(predicate.GenerationChangedPredicate{}).
 		Complete(c)
 }
