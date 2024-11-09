@@ -73,9 +73,6 @@ github.com/emirpasic/gods/trees
 github.com/emirpasic/gods/trees/binaryheap
 github.com/emirpasic/gods/trees/redblacktree
 github.com/emirpasic/gods/utils
-# github.com/evanphx/json-patch v5.7.0+incompatible
-## explicit
-github.com/evanphx/json-patch
 # github.com/evanphx/json-patch/v5 v5.9.0
 ## explicit; go 1.18
 github.com/evanphx/json-patch/v5
@@ -1804,7 +1801,7 @@ sigs.k8s.io/cluster-api/errors
 sigs.k8s.io/cluster-api/feature
 sigs.k8s.io/cluster-api/util/certs
 sigs.k8s.io/cluster-api/util/secret
-# sigs.k8s.io/controller-runtime v0.18.4
+# sigs.k8s.io/controller-runtime v0.19.1
 ## explicit; go 1.22.0
 sigs.k8s.io/controller-runtime
 sigs.k8s.io/controller-runtime/pkg/builder
@@ -1842,13 +1839,13 @@ sigs.k8s.io/controller-runtime/pkg/manager/signals
 sigs.k8s.io/controller-runtime/pkg/metrics
 sigs.k8s.io/controller-runtime/pkg/metrics/server
 sigs.k8s.io/controller-runtime/pkg/predicate
-sigs.k8s.io/controller-runtime/pkg/ratelimiter
 sigs.k8s.io/controller-runtime/pkg/reconcile
 sigs.k8s.io/controller-runtime/pkg/recorder
 sigs.k8s.io/controller-runtime/pkg/scheme
 sigs.k8s.io/controller-runtime/pkg/source
 sigs.k8s.io/controller-runtime/pkg/webhook
 sigs.k8s.io/controller-runtime/pkg/webhook/admission
+sigs.k8s.io/controller-runtime/pkg/webhook/admission/metrics
 sigs.k8s.io/controller-runtime/pkg/webhook/conversion
 sigs.k8s.io/controller-runtime/pkg/webhook/internal/metrics
 # sigs.k8s.io/custom-metrics-apiserver v1.30.0

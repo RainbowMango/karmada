@@ -54,7 +54,7 @@ require (
 	k8s.io/utils v0.0.0-20240711033017-18e509b52bc8
 	layeh.com/gopher-json v0.0.0-20201124131017-552bb3c4c3bf
 	sigs.k8s.io/cluster-api v1.7.1
-	sigs.k8s.io/controller-runtime v0.18.4
+	sigs.k8s.io/controller-runtime v0.19.1
 	sigs.k8s.io/custom-metrics-apiserver v1.30.0
 	sigs.k8s.io/kind v0.24.0
 	sigs.k8s.io/mcs-api v0.1.0
@@ -81,7 +81,6 @@ require (
 	github.com/cpuguy83/go-md2man/v2 v2.0.4 // indirect
 	github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc // indirect
 	github.com/emicklei/go-restful/v3 v3.12.0 // indirect
-	github.com/evanphx/json-patch v5.7.0+incompatible // indirect
 	github.com/exponent-io/jsonpath v0.0.0-20151013193312-d6023ce2651d // indirect
 	github.com/fatih/camelcase v1.0.0 // indirect
 	github.com/felixge/httpsnoop v1.0.4 // indirect
