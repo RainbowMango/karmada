@@ -21,6 +21,7 @@ import (
 	"k8s.io/apiserver/pkg/registry/generic"
 	"k8s.io/apiserver/pkg/registry/rest"
 	genericapiserver "k8s.io/apiserver/pkg/server"
+	"k8s.io/apiserver/pkg/util/version"
 	listcorev1 "k8s.io/client-go/listers/core/v1"
 	restclient "k8s.io/client-go/rest"
 	"k8s.io/klog/v2"
@@ -62,6 +63,7 @@ func (cfg *Config) Complete() CompletedConfig {
 		GenericConfig: cfg.GenericConfig.Complete(),
 		ExtraConfig:   &cfg.ExtraConfig,
 	}
+	c.GenericConfig.EffectiveVersion = version.NewEffectiveVersion("1.0")
 
 	return CompletedConfig{&c}
 }
