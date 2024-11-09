@@ -19,6 +19,7 @@ package search
 import (
 	"k8s.io/apiserver/pkg/registry/rest"
 	genericapiserver "k8s.io/apiserver/pkg/server"
+	"k8s.io/apiserver/pkg/util/version"
 	"k8s.io/klog/v2"
 
 	searchapis "github.com/karmada-io/karmada/pkg/apis/search"
@@ -63,6 +64,7 @@ func (cfg *Config) Complete() CompletedConfig {
 		GenericConfig: cfg.GenericConfig.Complete(),
 		ExtraConfig:   &cfg.ExtraConfig,
 	}
+	c.GenericConfig.EffectiveVersion = version.NewEffectiveVersion("1.0")
 
 	return CompletedConfig{&c}
 }
