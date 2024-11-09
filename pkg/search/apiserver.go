@@ -17,7 +17,6 @@ limitations under the License.
 package search
 
 import (
-	"k8s.io/apimachinery/pkg/version"
 	"k8s.io/apiserver/pkg/registry/rest"
 	genericapiserver "k8s.io/apiserver/pkg/server"
 	"k8s.io/klog/v2"
@@ -61,13 +60,8 @@ type CompletedConfig struct {
 // Complete fills in any fields not set that are required to have valid data. It's mutating the receiver.
 func (cfg *Config) Complete() CompletedConfig {
 	c := completedConfig{
-		cfg.GenericConfig.Complete(),
-		&cfg.ExtraConfig,
-	}
-
-	c.GenericConfig.Version = &version.Info{
-		Major: "1",
-		Minor: "0",
+		GenericConfig: cfg.GenericConfig.Complete(),
+		ExtraConfig:   &cfg.ExtraConfig,
 	}
 
 	return CompletedConfig{&c}
