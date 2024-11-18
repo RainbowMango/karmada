@@ -1,6 +1,6 @@
 module github.com/karmada-io/karmada
 
-go 1.22.9 // keep in sync with .go-version and hack/util.sh
+go 1.23.3 // keep in sync with .go-version and hack/util.sh
 
 require (
 	github.com/adhocore/gronx v1.6.3
@@ -58,7 +58,7 @@ require (
 	sigs.k8s.io/custom-metrics-apiserver v1.30.1-0.20241105195130-84dc8cfe2555
 	sigs.k8s.io/kind v0.24.0
 	sigs.k8s.io/mcs-api v0.1.0
-	sigs.k8s.io/metrics-server v0.7.1
+	sigs.k8s.io/metrics-server v0.7.1-0.20241008163023-9ebbad973db2
 	sigs.k8s.io/structured-merge-diff/v4 v4.4.1
 	sigs.k8s.io/yaml v1.4.0
 )
