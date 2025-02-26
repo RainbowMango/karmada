@@ -36,6 +36,7 @@ import (
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/tools/record"
+	"k8s.io/client-go/util/workqueue"
 	"k8s.io/klog/v2"
 
 	clusterv1alpha1 "github.com/karmada-io/karmada/pkg/apis/cluster/v1alpha1"
@@ -43,6 +44,7 @@ import (
 	workv1alpha2 "github.com/karmada-io/karmada/pkg/apis/work/v1alpha2"
 	estimatorclient "github.com/karmada-io/karmada/pkg/estimator/client"
 	"github.com/karmada-io/karmada/pkg/events"
+	"github.com/karmada-io/karmada/pkg/features"
 	karmadaclientset "github.com/karmada-io/karmada/pkg/generated/clientset/versioned"
 	informerfactory "github.com/karmada-io/karmada/pkg/generated/informers/externalversions"
 	clusterlister "github.com/karmada-io/karmada/pkg/generated/listers/cluster/v1alpha1"
@@ -96,7 +98,11 @@ type Scheduler struct {
 	// ResourceBinding/ClusterResourceBinding rescheduling.
 	clusterReconcileWorker util.AsyncWorker
 
-	queue          internalqueue.SchedulingQueue
+	// queue is the legacy rate limiting queue which will be replaced by priorityQueue
+	// in the future releases.
+	queue workqueue.TypedRateLimitingInterface[any]
+
+	priorityQueue  internalqueue.SchedulingQueue
 	Algorithm      core.ScheduleAlgorithm
 	schedulerCache schedulercache.Cache
 
@@ -238,7 +244,15 @@ func NewScheduler(dynamicClient dynamic.Interface, karmadaClient karmadaclientse
 	for _, opt := range opts {
 		opt(&options)
 	}
-	queue := internalqueue.NewSchedulingQueue(internalqueue.WithRateLimitingOptions(options.RateLimiterOptions))
+
+	var legacyQueue workqueue.TypedRateLimitingInterface[any]
+	var priorityQueue internalqueue.SchedulingQueue
+	if features.FeatureGate.Enabled(features.PriorityBasedScheduling) {
+		priorityQueue = internalqueue.NewSchedulingQueue(internalqueue.WithRateLimitingOptions(options.RateLimiterOptions))
+	} else {
+		legacyQueue = workqueue.NewTypedRateLimitingQueueWithConfig(ratelimiterflag.DefaultControllerRateLimiter[any](options.RateLimiterOptions), workqueue.TypedRateLimitingQueueConfig[any]{Name: "scheduler-queue"})
+	}
+
 	registry := frameworkplugins.NewInTreeRegistry()
 	if err := registry.Merge(options.outOfTreeRegistry); err != nil {
 		return nil, err
@@ -257,7 +271,8 @@ func NewScheduler(dynamicClient dynamic.Interface, karmadaClient karmadaclientse
 		clusterBindingLister: clusterBindingLister,
 		clusterLister:        clusterLister,
 		informerFactory:      factory,
-		queue:                queue,
+		queue:                legacyQueue,
+		priorityQueue:        priorityQueue,
 		Algorithm:            algorithm,
 		schedulerCache:       schedulerCache,
 	}
@@ -309,9 +324,14 @@ func (s *Scheduler) Run(ctx context.Context) {
 
 	go wait.Until(s.worker, time.Second, stopCh)
 
-	s.queue.Run()
-	<-stopCh
-	s.queue.Close()
+	if features.FeatureGate.Enabled(features.PriorityBasedScheduling) {
+		s.priorityQueue.Run()
+		<-stopCh
+		s.priorityQueue.Close()
+	} else {
+		<-stopCh
+		s.queue.ShutDown()
+	}
 }
 
 func (s *Scheduler) worker() {
@@ -320,16 +340,29 @@ func (s *Scheduler) worker() {
 }
 
 func (s *Scheduler) scheduleNext() bool {
-	bindingInfo, shutdown := s.queue.Pop()
-	if shutdown {
-		klog.Errorf("Fail to pop item from queue")
-		return false
-	}
-	defer s.queue.Done(bindingInfo)
+	if features.FeatureGate.Enabled(features.PriorityBasedScheduling) {
+		bindingInfo, shutdown := s.priorityQueue.Pop()
+		if shutdown {
+			klog.Errorf("Fail to pop item from priorityQueue")
+			return false
+		}
+		defer s.priorityQueue.Done(bindingInfo)
 
-	err := s.doSchedule(bindingInfo.NamespacedKey)
-	s.handleErr(err, bindingInfo)
-	return true
+		err := s.doSchedule(bindingInfo.NamespacedKey)
+		s.handleErr(err, bindingInfo)
+		return true
+	} else {
+		key, shutdown := s.queue.Get()
+		if shutdown {
+			klog.Errorf("Fail to pop item from queue")
+			return false
+		}
+		defer s.queue.Done(key)
+
+		err := s.doSchedule(key.(string))
+		s.legacyHandleErr(err, key)
+		return true
+	}
 }
 
 func (s *Scheduler) doSchedule(key string) error {
@@ -761,16 +794,26 @@ func (s *Scheduler) patchScheduleResultForClusterResourceBinding(oldBinding *wor
 
 func (s *Scheduler) handleErr(err error, bindingInfo *internalqueue.QueuedBindingInfo) {
 	if err == nil || apierrors.HasStatusCause(err, corev1.NamespaceTerminatingCause) {
-		s.queue.Forget(bindingInfo)
+		s.priorityQueue.Forget(bindingInfo)
 		return
 	}
 
 	var unschedulableErr *framework.UnschedulableError
 	if !errors.As(err, &unschedulableErr) {
-		s.queue.PushUnschedulableIfNotPresent(bindingInfo)
+		s.priorityQueue.PushUnschedulableIfNotPresent(bindingInfo)
 	} else {
-		s.queue.PushBackoffIfNotPresent(bindingInfo)
+		s.priorityQueue.PushBackoffIfNotPresent(bindingInfo)
 	}
+	metrics.CountSchedulerBindings(metrics.ScheduleAttemptFailure)
+}
+
+func (s *Scheduler) legacyHandleErr(err error, key interface{}) {
+	if err == nil || apierrors.HasStatusCause(err, corev1.NamespaceTerminatingCause) {
+		s.queue.Forget(key)
+		return
+	}
+
+	s.queue.AddRateLimited(key)
 	metrics.CountSchedulerBindings(metrics.ScheduleAttemptFailure)
 }
 

@@ -1109,20 +1109,20 @@ func TestWorkerAndScheduleNext(t *testing.T) {
 
 			s := &Scheduler{
 				KarmadaClient:        fakeClient,
-				queue:                queue,
+				priorityQueue:        queue,
 				bindingLister:        bindingLister,
 				clusterBindingLister: clusterBindingLister,
 				Algorithm:            mockAlgo,
 				eventRecorder:        eventRecorder,
 			}
 
-			s.queue.Push(&internalqueue.QueuedBindingInfo{
+			s.priorityQueue.Push(&internalqueue.QueuedBindingInfo{
 				NamespacedKey: tc.key,
 				Priority:      tc.priority,
 			})
 
 			if tc.shutdown {
-				s.queue.Close()
+				s.priorityQueue.Close()
 			}
 
 			result := s.scheduleNext()
@@ -1130,7 +1130,7 @@ func TestWorkerAndScheduleNext(t *testing.T) {
 			assert.Equal(t, tc.expectResult, result, "scheduleNext return value mismatch")
 
 			if !tc.shutdown {
-				assert.Equal(t, 0, s.queue.Len(), "Queue should be empty after processing")
+				assert.Equal(t, 0, s.priorityQueue.Len(), "Queue should be empty after processing")
 			}
 		})
 	}
@@ -1367,8 +1367,8 @@ func TestCreateScheduler(t *testing.T) {
 			if len(tc.plugins) > 0 && sche.Algorithm == nil {
 				t.Errorf("expected Algorithm to be set when plugins are provided")
 			}
-			if tc.rateLimiterOptions != (ratelimiterflag.Options{}) && sche.queue == nil {
-				t.Errorf("expected queue to be set when rate limiter options are provided")
+			if tc.rateLimiterOptions != (ratelimiterflag.Options{}) && sche.priorityQueue == nil {
+				t.Errorf("expected priorityQueue to be set when rate limiter options are provided")
 			}
 		})
 	}

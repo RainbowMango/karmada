@@ -33,6 +33,7 @@ import (
 	clusterv1alpha1 "github.com/karmada-io/karmada/pkg/apis/cluster/v1alpha1"
 	policyv1alpha1 "github.com/karmada-io/karmada/pkg/apis/policy/v1alpha1"
 	workv1alpha2 "github.com/karmada-io/karmada/pkg/apis/work/v1alpha2"
+	"github.com/karmada-io/karmada/pkg/features"
 	internalqueue "github.com/karmada-io/karmada/pkg/scheduler/internal/queue"
 	"github.com/karmada-io/karmada/pkg/scheduler/metrics"
 	"github.com/karmada-io/karmada/pkg/util"
@@ -136,14 +137,24 @@ func newQueuedBindingInfo(obj interface{}) *internalqueue.QueuedBindingInfo {
 }
 
 func (s *Scheduler) onResourceBindingAdd(obj interface{}) {
-	bindingInfo := newQueuedBindingInfo(obj)
-	if bindingInfo == nil {
-		// shouldn't happen
-		klog.Errorf("couldn't convert to QueuedBindingInfo %#v", obj)
-		return
-	}
+	if features.FeatureGate.Enabled(features.PriorityBasedScheduling) {
+		bindingInfo := newQueuedBindingInfo(obj)
+		if bindingInfo == nil {
+			// shouldn't happen
+			klog.Errorf("couldn't convert to QueuedBindingInfo %#v", obj)
+			return
+		}
 
-	s.queue.Push(bindingInfo)
+		s.priorityQueue.Push(bindingInfo)
+	} else {
+		key, err := cache.MetaNamespaceKeyFunc(obj)
+		if err != nil {
+			klog.Errorf("couldn't get key for object %#v: %v", obj, err)
+			return
+		}
+
+		s.queue.Add(key)
+	}
 	metrics.CountSchedulerBindings(metrics.BindingAdd)
 }
 
@@ -169,32 +180,62 @@ func (s *Scheduler) onResourceBindingUpdate(old, cur interface{}) {
 		return
 	}
 
-	bindingInfo := newQueuedBindingInfo(cur)
-	if bindingInfo == nil {
-		// shouldn't happen
-		klog.Errorf("couldn't convert to QueuedBindingInfo %#v", cur)
-		return
-	}
+	if features.FeatureGate.Enabled(features.PriorityBasedScheduling) {
+		bindingInfo := newQueuedBindingInfo(cur)
+		if bindingInfo == nil {
+			// shouldn't happen
+			klog.Errorf("couldn't convert to QueuedBindingInfo %#v", cur)
+			return
+		}
 
-	s.queue.Push(bindingInfo)
+		s.priorityQueue.Push(bindingInfo)
+	} else {
+		key, err := cache.MetaNamespaceKeyFunc(cur)
+		if err != nil {
+			klog.Errorf("couldn't get key for object %#v: %v", cur, err)
+			return
+		}
+
+		s.queue.Add(key)
+	}
 	metrics.CountSchedulerBindings(metrics.BindingUpdate)
 }
 
 func (s *Scheduler) onResourceBindingRequeue(binding *workv1alpha2.ResourceBinding, event string) {
 	klog.Infof("Requeue ResourceBinding(%s/%s) due to event(%s).", binding.Namespace, binding.Name, event)
-	s.queue.Push(&internalqueue.QueuedBindingInfo{
-		NamespacedKey: cache.ObjectName{Namespace: binding.Namespace, Name: binding.Name}.String(),
-		Priority:      binding.Spec.ExplicitPriority(),
-	})
+	if features.FeatureGate.Enabled(features.PriorityBasedScheduling) {
+		s.priorityQueue.Push(&internalqueue.QueuedBindingInfo{
+			NamespacedKey: cache.ObjectName{Namespace: binding.Namespace, Name: binding.Name}.String(),
+			Priority:      binding.Spec.ExplicitPriority(),
+		})
+	} else {
+		key, err := cache.MetaNamespaceKeyFunc(binding)
+		if err != nil {
+			klog.Errorf("couldn't get key for ResourceBinding(%s/%s): %v", binding.Namespace, binding.Name, err)
+			return
+		}
+		klog.Infof("Requeue ResourceBinding(%s/%s) due to event(%s).", binding.Namespace, binding.Name, event)
+		s.queue.Add(key)
+	}
 	metrics.CountSchedulerBindings(event)
 }
 
 func (s *Scheduler) onClusterResourceBindingRequeue(clusterResourceBinding *workv1alpha2.ClusterResourceBinding, event string) {
 	klog.Infof("Requeue ClusterResourceBinding(%s) due to event(%s).", clusterResourceBinding.Name, event)
-	s.queue.Push(&internalqueue.QueuedBindingInfo{
-		NamespacedKey: clusterResourceBinding.Name,
-		Priority:      clusterResourceBinding.Spec.ExplicitPriority(),
-	})
+	if features.FeatureGate.Enabled(features.PriorityBasedScheduling) {
+		s.priorityQueue.Push(&internalqueue.QueuedBindingInfo{
+			NamespacedKey: clusterResourceBinding.Name,
+			Priority:      clusterResourceBinding.Spec.ExplicitPriority(),
+		})
+	} else {
+		key, err := cache.MetaNamespaceKeyFunc(clusterResourceBinding)
+		if err != nil {
+			klog.Errorf("couldn't get key for ClusterResourceBinding(%s): %v", clusterResourceBinding.Name, err)
+			return
+		}
+		klog.Infof("Requeue ClusterResourceBinding(%s) due to event(%s).", clusterResourceBinding.Name, event)
+		s.queue.Add(key)
+	}
 	metrics.CountSchedulerBindings(event)
 }
 
@@ -296,7 +337,7 @@ func (s *Scheduler) enqueueAffectedBindings(cluster *clusterv1alpha1.Cluster) er
 		var affinity *policyv1alpha1.ClusterAffinity
 		if placementPtr.ClusterAffinities != nil {
 			if binding.Status.SchedulerObservedGeneration != binding.Generation {
-				// Hit here means the binding maybe still in the queue waiting
+				// Hit here means the binding maybe still in the priorityQueue waiting
 				// for scheduling or its status has not been synced to the
 				// cache. Just enqueue the binding to avoid missing the cluster
 				// update event.
@@ -313,10 +354,10 @@ func (s *Scheduler) enqueueAffectedBindings(cluster *clusterv1alpha1.Cluster) er
 
 		switch {
 		case affinity == nil:
-			// If no clusters specified, add it to the queue
+			// If no clusters specified, add it to the priorityQueue
 			fallthrough
 		case util.ClusterMatches(cluster, *affinity):
-			// If the cluster manifest match the affinity, add it to the queue, trigger rescheduling
+			// If the cluster manifest match the affinity, add it to the priorityQueue, trigger rescheduling
 			if schedulerNameFilter(s.schedulerName, binding.Spec.SchedulerName) {
 				s.onResourceBindingRequeue(binding, metrics.ClusterChanged)
 			}
@@ -341,7 +382,7 @@ func (s *Scheduler) enqueueAffectedCRBs(cluster *clusterv1alpha1.Cluster) error 
 		var affinity *policyv1alpha1.ClusterAffinity
 		if placementPtr.ClusterAffinities != nil {
 			if binding.Status.SchedulerObservedGeneration != binding.Generation {
-				// Hit here means the binding maybe still in the queue waiting
+				// Hit here means the binding maybe still in the priorityQueue waiting
 				// for scheduling or its status has not been synced to the
 				// cache. Just enqueue the binding to avoid missing the cluster
 				// update event.
@@ -358,10 +399,10 @@ func (s *Scheduler) enqueueAffectedCRBs(cluster *clusterv1alpha1.Cluster) error 
 
 		switch {
 		case affinity == nil:
-			// If no clusters specified, add it to the queue
+			// If no clusters specified, add it to the priorityQueue
 			fallthrough
 		case util.ClusterMatches(cluster, *affinity):
-			// If the cluster manifest match the affinity, add it to the queue, trigger rescheduling
+			// If the cluster manifest match the affinity, add it to the priorityQueue, trigger rescheduling
 			if schedulerNameFilter(s.schedulerName, binding.Spec.SchedulerName) {
 				s.onClusterResourceBindingRequeue(binding, metrics.ClusterChanged)
 			}
