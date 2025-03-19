@@ -28,7 +28,7 @@ require (
 	github.com/vektra/mockery/v2 v2.10.0
 	github.com/yuin/gopher-lua v0.0.0-20220504180219-658193537a64
 	go.uber.org/mock v0.4.0
-	golang.org/x/net v0.34.0
+	golang.org/x/net v0.37.0
 	golang.org/x/term v0.28.0
 	golang.org/x/text v0.21.0
 	golang.org/x/time v0.5.0
