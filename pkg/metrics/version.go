@@ -17,8 +17,6 @@ limitations under the License.
 package metrics
 
 import (
-	"fmt"
-
 	"github.com/prometheus/client_golang/prometheus"
 
 	"github.com/karmada-io/karmada/pkg/version"
@@ -26,15 +24,11 @@ import (
 
 // NewBuildInfoCollector returns a collector that exports metrics about current version
 // information.
-func NewBuildInfoCollector(program string) prometheus.Collector {
+func NewBuildInfoCollector() prometheus.Collector {
 	return prometheus.NewGaugeFunc(
 		prometheus.GaugeOpts{
-			Namespace: program,
-			Name:      "build_info",
-			Help: fmt.Sprintf(
-				"A metric with a constant '1' value labeled by version, commit, short_commit, tree_state, goversion. build_date from which %s was built, and the goos and goarch for the build.",
-				program,
-			),
+			Name: "karmada_build_info",
+			Help: "Karmada build metadata exposed as labels with a constant value of 1.",
 			ConstLabels: prometheus.Labels{
 				"git_version":      version.Get().GitVersion,
 				"git_commit":       version.Get().GitCommit,
