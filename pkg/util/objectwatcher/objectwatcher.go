@@ -176,6 +176,11 @@ func (o *objectWatcherImpl) Update(ctx context.Context, clusterName string, desi
 		return OperationResultNone, err
 	}
 
+	dObj, _ := desireObj.DeepCopy().MarshalJSON()
+	cObj, _ := clusterObj.DeepCopy().MarshalJSON()
+	klog.Infof("desireObj: %s", string(dObj))
+	klog.Infof("clusterObj: %s", string(cObj))
+
 	resource, err := dynamicClusterClient.DynamicClientSet.Resource(gvr).Namespace(desireObj.GetNamespace()).Update(ctx, desireObj, metav1.UpdateOptions{})
 	if err != nil {
 		klog.Errorf("Failed to update resource(kind=%s, %s/%s) in cluster %s, err: %v.", desireObj.GetKind(), desireObj.GetNamespace(), desireObj.GetName(), clusterName, err)
