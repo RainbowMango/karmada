@@ -100,8 +100,12 @@ func (i *customResourceInterpreterImpl) Start(ctx context.Context) (err error) {
 
 	i.informer.Start()
 	i.informer.WaitForCacheSync()
-	<-ctx.Done()
-	klog.Infof("Stopped as context canceled.")
+
+	// S1: List all configurations
+	// S2: Load Configurations
+	// i.configurableInterpreter.LoadConfig()
+	// 注： 4种Infomer都需要确保加载后再返回
+
 	return nil
 }
 

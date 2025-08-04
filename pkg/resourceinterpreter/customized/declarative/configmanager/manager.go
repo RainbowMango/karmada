@@ -51,6 +51,7 @@ type interpreterConfigManager struct {
 	initialSynced atomic.Bool
 	lister        cache.GenericLister
 	configuration atomic.Value
+	informer      genericmanager.SingleClusterInformerManager
 }
 
 // CustomAccessors returns all cached configurations.
@@ -96,6 +97,9 @@ func NewInterpreterConfigManager(informer genericmanager.SingleClusterInformerMa
 }
 
 func (configManager *interpreterConfigManager) updateConfiguration() {
+	if !configManager.informer.IsInformerSynced(resourceInterpreterCustomizationsGVR) {
+		return
+	}
 	configurations, err := configManager.lister.List(labels.Everything())
 	if err != nil {
 		utilruntime.HandleError(fmt.Errorf("error updating configuration: %v", err))
