@@ -21,6 +21,7 @@ package server
 
 import (
 	"fmt"
+	"time"
 
 	corev1 "k8s.io/api/core/v1"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
@@ -135,6 +136,10 @@ func (es *AccurateSchedulerEstimatorServer) addNodeToCache(obj interface{}) {
 
 	es.Cache.AddNode(node)
 	klog.V(3).InfoS("Add event for node", "node", klog.KObj(node))
+
+	// [JUSTFORTEST] 1. Block event handler forever, see if the infomer cache can finish sync before event handler.
+	klog.V(0).Infof("[JUSTFORTEST] addNodeToCache recieved a node:%s, then go to sleep forever", node.Name)
+	time.Sleep(1000 * time.Hour)
 }
 
 func (es *AccurateSchedulerEstimatorServer) updateNodeInCache(oldObj, newObj interface{}) {

@@ -153,6 +153,8 @@ func (es *AccurateSchedulerEstimatorServer) Start(ctx context.Context) error {
 
 	es.informerFactory.Start(ctx.Done())
 	es.informerFactory.WaitForCacheSync(ctx.Done())
+	// [JUSTFORTEST] 2. add log for observe informer synced
+	klog.V(0).Infof("[JUSTFORTEST] informerFactory synced.")
 
 	es.informerManager.Start()
 	if synced := es.informerManager.WaitForCacheSync(); synced == nil {
