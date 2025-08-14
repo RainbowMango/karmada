@@ -18469,10 +18469,28 @@
         }
       }
     },
+    "com.github.karmada-io.karmada.pkg.apis.config.v1alpha1.ComponentReplicaResourceRequirement": {
+      "description": "ComponentReplicaResourceRequirement holds the Lua script for extracting the desired replica count and resource requirements for each component within a resource. This is particularly useful for resources that define multiple components (such as CRDs with multiple pod templates), but can also be used for single-component resources.",
+      "type": "object",
+      "required": [
+        "luaScript"
+      ],
+      "properties": {
+        "luaScript": {
+          "description": "return components\n      end\n```\n\nThe content of the LuaScript needs to be a whole function including both declaration and implementation.\n\nThe parameters will be supplied by the system:\n  - desiredObj: the object represents the configuration to be applied\n      to the member cluster.\n\nThe function expects one return values:\n  - components: resource requirements for each component.\nThe returned values will be set into a ResourceBinding or ClusterResourceBinding.",
+          "type": "string",
+          "default": ""
+        }
+      }
+    },
     "com.github.karmada-io.karmada.pkg.apis.config.v1alpha1.CustomizationRules": {
       "description": "CustomizationRules describes the interpretation rules.",
       "type": "object",
       "properties": {
+        "componentReplicaResource": {
+          "description": "ComponentReplicaResource describes the rules for Karmada to discover the resource requirements for multiple components from the given object. This is designed for CRDs with multiple components (e.g., FlinkDeployment), but can also be used for single-component resources like Deployment. If implemented, the controller will use this to obtain per-component replica and resource requirements, and will not call ReplicaResource. If not implemented, the controller will fall back to ReplicaResource for backward compatibility. This will only be used when the feature gate 'MultiplePodTemplatesScheduling' is enabled.",
+          "$ref": "#/definitions/com.github.karmada-io.karmada.pkg.apis.config.v1alpha1.ComponentReplicaResourceRequirement"
+        },
         "dependencyInterpretation": {
           "description": "DependencyInterpretation describes the rules for Karmada to analyze the dependent resources. Karmada provides built-in rules for several standard Kubernetes types, see: https://karmada.io/docs/userguide/globalview/customizing-resource-interpreter/#interpretdependency If DependencyInterpretation is set, the built-in rules will be ignored.",
           "$ref": "#/definitions/com.github.karmada-io.karmada.pkg.apis.config.v1alpha1.DependencyInterpretation"
