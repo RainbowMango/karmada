@@ -127,6 +127,16 @@ const (
 	// InterpreterOperationReviseReplica indicates that karmada request webhook to modify the replica.
 	InterpreterOperationReviseReplica InterpreterOperation = "ReviseReplica"
 
+	// InterpreterOperationInterpretComponentReplica indicates that karmada wants to figure out
+	// resource requirements for multiple components from a given object.
+	// This operation is designed for CRDs with multiple components (e.g., FlinkDeployment), but
+	// can also be used for single-component resources like Deployment.
+	// If implemented, the controller will use this to obtain per-component replica and resource
+	// requirements, and will not call InterpretReplica.
+	// If not implemented, the controller will fall back to InterpretReplica for backward compatibility.
+	// This will only be used when the feature gate 'MultiplePodTemplatesScheduling' is enabled.
+	InterpreterOperationInterpretComponentReplica InterpreterOperation = "InterpretComponentReplica"
+
 	// InterpreterOperationInterpretStatus indicates that karmada want to figure out how to get the status.
 	// Only necessary for those resource types that define their status in a special path(not '.status').
 	InterpreterOperationInterpretStatus InterpreterOperation = "InterpretStatus"
