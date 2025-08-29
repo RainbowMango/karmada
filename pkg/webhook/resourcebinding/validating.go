@@ -331,7 +331,7 @@ func (v *ValidatingAdmission) processSingleFRQ(frqItem *policyv1alpha1.Federated
 }
 
 // validateComponents checks the validity of the Components field in the ResourceBinding.
-func (v *ValidatingAdmission) validateComponents(components []workv1alpha2.ComponentRequirements, fldPath *field.Path) error {
+func (v *ValidatingAdmission) validateComponents(components []workv1alpha2.Component, fldPath *field.Path) error {
 	var allErrs field.ErrorList
 	componentNames := make(map[string]struct{})
 	for index, component := range components {
@@ -344,43 +344,6 @@ func (v *ValidatingAdmission) validateComponents(components []workv1alpha2.Compo
 		}
 	}
 	return allErrs.ToAggregate()
-}
-
-func calculateResourceUsage(rb *workv1alpha2.ResourceBinding) (corev1.ResourceList, error) {
-	if rb == nil || rb.Spec.ReplicaRequirements == nil || len(rb.Spec.ReplicaRequirements.ResourceRequest) == 0 || len(rb.Spec.Clusters) == 0 {
-		return corev1.ResourceList{}, nil
-	}
-
-	totalReplicas := int32(0)
-	for _, cluster := range rb.Spec.Clusters {
-		totalReplicas += cluster.Replicas
-	}
-
-	if totalReplicas == 0 {
-		return corev1.ResourceList{}, nil
-	}
-	if totalReplicas < 0 {
-		return nil, fmt.Errorf("total replicas in clusters cannot be negative for RB %s/%s: %d", rb.Namespace, rb.Name, totalReplicas)
-	}
-
-	usage := corev1.ResourceList{}
-	replicaCount := int64(totalReplicas)
-
-	for resourceName, quantityPerReplica := range rb.Spec.ReplicaRequirements.ResourceRequest {
-		if quantityPerReplica.IsZero() {
-			continue
-		}
-		if quantityPerReplica.Sign() < 0 {
-			return nil, fmt.Errorf("resource request for %s in RB %s/%s has a negative value: %s", resourceName, rb.Namespace, rb.Name, quantityPerReplica.String())
-		}
-
-		totalQuantity := quantityPerReplica.DeepCopy()
-		totalQuantity.Mul(replicaCount)
-
-		usage[resourceName] = totalQuantity
-	}
-	klog.V(4).Infof("Calculated resource usage for ResourceBinding %s/%s: %v", rb.Namespace, rb.Name, usage)
-	return usage, nil
 }
 
 func isQuotaRelevantFieldChanged(oldRB, newRB *workv1alpha2.ResourceBinding) bool {

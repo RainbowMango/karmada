@@ -525,9 +525,9 @@ func TestValidatingAdmission_Handle(t *testing.T) {
 		{
 			name: "validateComponents: one component without name (should deny)",
 			req: newAdmissionRequestBuilder(t, admissionv1.Create, "comp-ns", "rb-one-component-no-name", "one-comp-no-name").
-				WithObject(makeTestRB("comp-ns", "rb-one-component-no-name", WithComponents([]workv1alpha2.ComponentRequirements{{}}))).
+				WithObject(makeTestRB("comp-ns", "rb-one-component-no-name", WithComponents([]workv1alpha2.Component{{}}))).
 				Build(),
-			decoder:       &fakeDecoder{decodeObj: makeTestRB("comp-ns", "rb-one-component-no-name", WithComponents([]workv1alpha2.ComponentRequirements{{}}))},
+			decoder:       &fakeDecoder{decodeObj: makeTestRB("comp-ns", "rb-one-component-no-name", WithComponents([]workv1alpha2.Component{{}}))},
 			clientObjects: nil,
 			enableFederatedQuotaEnforcementFeatureGate:      false,
 			enableMultiplePodTemplatesSchedulingFeatureGate: true,
@@ -536,11 +536,11 @@ func TestValidatingAdmission_Handle(t *testing.T) {
 		{
 			name: "validateComponents: one component with name (should allow)",
 			req: newAdmissionRequestBuilder(t, admissionv1.Create, "comp-ns", "rb-one-component-with-name", "one-comp-with-name").
-				WithObject(makeTestRB("comp-ns", "rb-one-component-with-name", WithComponents([]workv1alpha2.ComponentRequirements{
+				WithObject(makeTestRB("comp-ns", "rb-one-component-with-name", WithComponents([]workv1alpha2.Component{
 					{Name: "foo"},
 				}))).
 				Build(),
-			decoder:       &fakeDecoder{decodeObj: makeTestRB("comp-ns", "rb-one-component-with-name", WithComponents([]workv1alpha2.ComponentRequirements{{Name: "foo"}}))},
+			decoder:       &fakeDecoder{decodeObj: makeTestRB("comp-ns", "rb-one-component-with-name", WithComponents([]workv1alpha2.Component{{Name: "foo"}}))},
 			clientObjects: nil,
 			enableFederatedQuotaEnforcementFeatureGate:      false,
 			enableMultiplePodTemplatesSchedulingFeatureGate: true,
@@ -549,11 +549,11 @@ func TestValidatingAdmission_Handle(t *testing.T) {
 		{
 			name: "validateComponents: multiple components with unique names (should allow)",
 			req: newAdmissionRequestBuilder(t, admissionv1.Create, "comp-ns", "rb-multi-unique", "multi-unique").
-				WithObject(makeTestRB("comp-ns", "rb-multi-unique", WithComponents([]workv1alpha2.ComponentRequirements{
+				WithObject(makeTestRB("comp-ns", "rb-multi-unique", WithComponents([]workv1alpha2.Component{
 					{Name: "foo"}, {Name: "bar"},
 				}))).
 				Build(),
-			decoder:       &fakeDecoder{decodeObj: makeTestRB("comp-ns", "rb-multi-unique", WithComponents([]workv1alpha2.ComponentRequirements{{Name: "foo"}, {Name: "bar"}}))},
+			decoder:       &fakeDecoder{decodeObj: makeTestRB("comp-ns", "rb-multi-unique", WithComponents([]workv1alpha2.Component{{Name: "foo"}, {Name: "bar"}}))},
 			clientObjects: nil,
 			enableFederatedQuotaEnforcementFeatureGate:      false,
 			enableMultiplePodTemplatesSchedulingFeatureGate: true,
@@ -562,11 +562,11 @@ func TestValidatingAdmission_Handle(t *testing.T) {
 		{
 			name: "validateComponents: multiple components with empty name (should deny)",
 			req: newAdmissionRequestBuilder(t, admissionv1.Create, "comp-ns", "rb-multi-empty", "multi-empty").
-				WithObject(makeTestRB("comp-ns", "rb-multi-empty", WithComponents([]workv1alpha2.ComponentRequirements{
+				WithObject(makeTestRB("comp-ns", "rb-multi-empty", WithComponents([]workv1alpha2.Component{
 					{Name: "foo"}, {Name: ""}, {Name: ""},
 				}))).
 				Build(),
-			decoder:       &fakeDecoder{decodeObj: makeTestRB("comp-ns", "rb-multi-empty", WithComponents([]workv1alpha2.ComponentRequirements{{Name: "foo"}, {Name: ""}}))},
+			decoder:       &fakeDecoder{decodeObj: makeTestRB("comp-ns", "rb-multi-empty", WithComponents([]workv1alpha2.Component{{Name: "foo"}, {Name: ""}}))},
 			clientObjects: nil,
 			enableFederatedQuotaEnforcementFeatureGate:      false,
 			enableMultiplePodTemplatesSchedulingFeatureGate: true,
@@ -575,11 +575,11 @@ func TestValidatingAdmission_Handle(t *testing.T) {
 		{
 			name: "validateComponents: multiple components with duplicate names (should deny)",
 			req: newAdmissionRequestBuilder(t, admissionv1.Create, "comp-ns", "rb-multi-dup", "multi-dup").
-				WithObject(makeTestRB("comp-ns", "rb-multi-dup", WithComponents([]workv1alpha2.ComponentRequirements{
+				WithObject(makeTestRB("comp-ns", "rb-multi-dup", WithComponents([]workv1alpha2.Component{
 					{Name: "foo"}, {Name: "foo"},
 				}))).
 				Build(),
-			decoder:       &fakeDecoder{decodeObj: makeTestRB("comp-ns", "rb-multi-dup", WithComponents([]workv1alpha2.ComponentRequirements{{Name: "foo"}, {Name: "foo"}}))},
+			decoder:       &fakeDecoder{decodeObj: makeTestRB("comp-ns", "rb-multi-dup", WithComponents([]workv1alpha2.Component{{Name: "foo"}, {Name: "foo"}}))},
 			clientObjects: nil,
 			enableFederatedQuotaEnforcementFeatureGate:      false,
 			enableMultiplePodTemplatesSchedulingFeatureGate: true,
