@@ -125,6 +125,10 @@ func MergePolicySuspension(bindingSuspension, policySuspension *workv1alpha2.Sus
 	} else { // have to clean suspension previous synced to binding if any
 		bindingSuspension.Suspension.Dispatching = nil
 		bindingSuspension.Suspension.DispatchingOnClusters = nil
+
+		if bindingSuspension.Scheduling == nil { // if the scheduling not set, no need to keep an empty struct
+			bindingSuspension = nil
+		}
 	}
 
 	return bindingSuspension
