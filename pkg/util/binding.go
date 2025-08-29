@@ -111,16 +111,21 @@ func RescheduleRequired(rescheduleTriggeredAt, lastScheduledTime *metav1.Time) b
 	return rescheduleTriggeredAt.After(lastScheduledTime.Time)
 }
 
-// UpdateBindingSuspension will update the suspension field of binding according to the new suspension and existing suspension.
-func UpdateBindingSuspension(existSuspension, newSuspension *workv1alpha2.Suspension) *workv1alpha2.Suspension {
-	updated := newSuspension.DeepCopy()
-
-	if existSuspension != nil && existSuspension.Scheduling != nil {
-		if updated == nil {
-			updated = &workv1alpha2.Suspension{}
-		}
-		updated.Scheduling = existSuspension.Scheduling
+// MergePolicySuspension will update the suspension field of binding according to the new suspension and existing suspension.
+func MergePolicySuspension(bindingSuspension, policySuspension *workv1alpha2.Suspension) *workv1alpha2.Suspension {
+	if bindingSuspension == nil && policySuspension == nil {
+		return nil
 	}
 
-	return updated
+	if policySuspension != nil { // have to sync policy suspension to binding
+		if bindingSuspension == nil {
+			bindingSuspension = &workv1alpha2.Suspension{}
+		}
+		bindingSuspension.Suspension = policySuspension.Suspension
+	} else { // have to clean suspension previous synced to binding if any
+		bindingSuspension.Suspension.Dispatching = nil
+		bindingSuspension.Suspension.DispatchingOnClusters = nil
+	}
+
+	return bindingSuspension
 }

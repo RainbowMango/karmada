@@ -501,9 +501,9 @@ func TestUpdateBindingSuspension(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := UpdateBindingSuspension(tt.existSuspension, tt.newSuspension)
+			got := MergePolicySuspension(tt.existSuspension, tt.newSuspension)
 			if !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("UpdateBindingSuspension() got = %v, want %v", got, tt.want)
+				t.Errorf("MergePolicySuspension() got = %v, want %v", got, tt.want)
 			}
 		})
 	}
