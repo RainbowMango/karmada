@@ -110,3 +110,17 @@ func RescheduleRequired(rescheduleTriggeredAt, lastScheduledTime *metav1.Time) b
 	}
 	return rescheduleTriggeredAt.After(lastScheduledTime.Time)
 }
+
+// UpdateBindingSuspension will update the suspension field of binding according to the new suspension and existing suspension.
+func UpdateBindingSuspension(existSuspension, newSuspension *workv1alpha2.Suspension) *workv1alpha2.Suspension {
+	updated := newSuspension.DeepCopy()
+
+	if existSuspension != nil && existSuspension.Scheduling != nil {
+		if updated == nil {
+			updated = &workv1alpha2.Suspension{}
+		}
+		updated.Scheduling = existSuspension.Scheduling
+	}
+
+	return updated
+}

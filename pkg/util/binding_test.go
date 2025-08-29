@@ -23,6 +23,7 @@ import (
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/sets"
+	"k8s.io/utils/ptr"
 
 	policyv1alpha1 "github.com/karmada-io/karmada/pkg/apis/policy/v1alpha1"
 	workv1alpha2 "github.com/karmada-io/karmada/pkg/apis/work/v1alpha2"
@@ -415,6 +416,94 @@ func TestRescheduleRequired(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			if got := RescheduleRequired(tt.rescheduleTriggeredAt, tt.lastScheduledTime); got != tt.want {
 				t.Errorf("RescheduleRequired() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestUpdateBindingSuspension(t *testing.T) {
+	tests := []struct {
+		name            string
+		existSuspension *workv1alpha2.Suspension
+		newSuspension   *workv1alpha2.Suspension
+		want            *workv1alpha2.Suspension
+	}{
+		{
+			name:            "new and exist are nil",
+			existSuspension: nil,
+			newSuspension:   nil,
+			want:            nil,
+		},
+		{
+			name: "new is nil and exist.Scheduling is not nil",
+			existSuspension: &workv1alpha2.Suspension{
+				Scheduling: ptr.To(true),
+			},
+			newSuspension: nil,
+			want: &workv1alpha2.Suspension{
+				Scheduling: ptr.To(true),
+			},
+		},
+		{
+			name: "remove Suspension.Suspension while keep exist.Scheduling",
+			existSuspension: &workv1alpha2.Suspension{
+				Suspension: policyv1alpha1.Suspension{
+					Dispatching: ptr.To(true),
+				},
+				Scheduling: ptr.To(true),
+			},
+			newSuspension: nil,
+			want: &workv1alpha2.Suspension{
+				Scheduling: ptr.To(true),
+			},
+		},
+		{
+			name: "remove Suspension.Suspension",
+			existSuspension: &workv1alpha2.Suspension{
+				Suspension: policyv1alpha1.Suspension{
+					Dispatching: ptr.To(true),
+				},
+			},
+			newSuspension: nil,
+			want:          nil,
+		},
+		{
+			name:            "new is not nil and exist is nil",
+			existSuspension: nil,
+			newSuspension: &workv1alpha2.Suspension{
+				Suspension: policyv1alpha1.Suspension{
+					Dispatching: ptr.To(true),
+				},
+			},
+			want: &workv1alpha2.Suspension{
+				Suspension: policyv1alpha1.Suspension{
+					Dispatching: ptr.To(true),
+				},
+			},
+		},
+		{
+			name: "new and exist are not nil",
+			existSuspension: &workv1alpha2.Suspension{
+				Scheduling: ptr.To(true),
+			},
+			newSuspension: &workv1alpha2.Suspension{
+				Suspension: policyv1alpha1.Suspension{
+					Dispatching: ptr.To(true),
+				},
+			},
+			want: &workv1alpha2.Suspension{
+				Suspension: policyv1alpha1.Suspension{
+					Dispatching: ptr.To(true),
+				},
+				Scheduling: ptr.To(true),
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := UpdateBindingSuspension(tt.existSuspension, tt.newSuspension)
+			if !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("UpdateBindingSuspension() got = %v, want %v", got, tt.want)
 			}
 		})
 	}
