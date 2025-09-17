@@ -17,10 +17,10 @@ limitations under the License.
 package helper
 
 import (
+	"container/heap"
 	"context"
 	"crypto/rand"
 	"math/big"
-	"sort"
 
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -97,6 +97,7 @@ type Dispenser struct {
 }
 
 // NewDispenser will construct a dispenser with target replicas and a prescribed initial result.
+// TODO(@RainbowMango): Both NewDispenser and TakeByWeight accepts a list of cluster, that smells not good, such as what if they are not the same?
 func NewDispenser(numReplicas int32, init []workv1alpha2.TargetCluster) *Dispenser {
 	cp := make([]workv1alpha2.TargetCluster, len(init))
 	copy(cp, init)
@@ -110,36 +111,46 @@ func (a *Dispenser) Done() bool {
 
 // TakeByWeight divide replicas by a weight list and merge the result into previous result.
 func (a *Dispenser) TakeByWeight(w ClusterWeightInfoList) {
+	// ignore invalid weight list
+	if w.Len() <= 0 {
+		return
+	}
+
 	if a.Done() {
 		return
 	}
-	sum := w.GetWeightSum()
-	if sum == 0 {
-		return
-	}
 
-	sort.Sort(w)
-
-	result := make([]workv1alpha2.TargetCluster, 0, w.Len())
-	remain := a.NumReplicas
-	for _, info := range w {
-		replicas := int32(info.Weight * int64(a.NumReplicas) / sum) // #nosec G115: integer overflow conversion int64 -> int32
-		result = append(result, workv1alpha2.TargetCluster{
-			Name:     info.ClusterName,
-			Replicas: replicas,
-		})
-		remain -= replicas
-	}
-	// TODO(Garrybest): take rest replicas by fraction part
-	for i := range result {
-		if remain == 0 {
-			break
+	// Initialize priority queue with all clusters
+	pq := make(WebsterPriorityQueue, w.Len())
+	nameToIndex := make(map[string]int, w.Len())
+	for i, cluster := range w {
+		pq[i] = Party{
+			Name:  cluster.ClusterName,
+			Votes: cluster.Weight,
 		}
-		result[i].Replicas++
-		remain--
+		nameToIndex[cluster.ClusterName] = i
 	}
+	heap.Init(&pq)
 
-	a.NumReplicas = remain
+	// assign replicas one by one to cluster with the highest priority.
+	remaining := a.NumReplicas
+	for ; remaining > 0; remaining-- {
+		top := heap.Pop(&pq).(Party)
+		top.Seats++
+		heap.Push(&pq, top)
+	}
+	a.NumReplicas = remaining
+
+	// Collect results in the same order as input
+	result := make([]workv1alpha2.TargetCluster, w.Len())
+	for _, party := range pq {
+		if idx, ok := nameToIndex[party.Name]; ok {
+			result[idx] = workv1alpha2.TargetCluster{
+				Name:     party.Name,
+				Replicas: party.Seats,
+			}
+		}
+	}
 	a.Result = util.MergeTargetClusters(a.Result, result)
 }
 

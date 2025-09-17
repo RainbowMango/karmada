@@ -71,9 +71,9 @@ func Test_dispenser_takeByWeight(t *testing.T) {
 				{Name: "C", Replicas: 3},
 			},
 			weightList: []ClusterWeightInfo{
-				{ClusterName: "A", Weight: 1},
-				{ClusterName: "B", Weight: 2},
-				{ClusterName: "C", Weight: 3},
+				{ClusterName: "A", Weight: 1, LastReplicas: 1},
+				{ClusterName: "B", Weight: 2, LastReplicas: 2},
+				{ClusterName: "C", Weight: 3, LastReplicas: 3},
 			},
 			desired: []workv1alpha2.TargetCluster{
 				{Name: "A", Replicas: 2},
@@ -90,9 +90,9 @@ func Test_dispenser_takeByWeight(t *testing.T) {
 				{Name: "C", Replicas: 3},
 			},
 			weightList: []ClusterWeightInfo{
-				{ClusterName: "A", Weight: 1},
-				{ClusterName: "B", Weight: 2},
-				{ClusterName: "C", Weight: 3},
+				{ClusterName: "A", Weight: 1, LastReplicas: 1},
+				{ClusterName: "B", Weight: 2, LastReplicas: 2},
+				{ClusterName: "C", Weight: 3, LastReplicas: 3},
 			},
 			desired: []workv1alpha2.TargetCluster{
 				{Name: "A", Replicas: 1},
@@ -104,19 +104,19 @@ func Test_dispenser_takeByWeight(t *testing.T) {
 			name:        "Scale up 2 replicas",
 			newReplicas: 2,
 			initialAssignment: []workv1alpha2.TargetCluster{
-				{Name: "A", Replicas: 1},
-				{Name: "B", Replicas: 2},
-				{Name: "C", Replicas: 3},
+				{Name: "A", Replicas: 2},
+				{Name: "B", Replicas: 0},
+				{Name: "C", Replicas: 0},
 			},
 			weightList: []ClusterWeightInfo{
-				{ClusterName: "A", Weight: 1},
-				{ClusterName: "B", Weight: 2},
-				{ClusterName: "C", Weight: 3},
+				{ClusterName: "A", Weight: 1, LastReplicas: 2},
+				{ClusterName: "B", Weight: 2, LastReplicas: 0},
+				{ClusterName: "C", Weight: 3, LastReplicas: 0},
 			},
 			desired: []workv1alpha2.TargetCluster{
-				{Name: "A", Replicas: 1},
-				{Name: "B", Replicas: 2},
-				{Name: "C", Replicas: 5},
+				{Name: "A", Replicas: 2},
+				{Name: "B", Replicas: 1},
+				{Name: "C", Replicas: 1},
 			},
 		},
 		{
@@ -141,8 +141,8 @@ func Test_dispenser_takeByWeight(t *testing.T) {
 				{ClusterName: "B", Weight: 1},
 			},
 			desired: []workv1alpha2.TargetCluster{
-				{Name: "A", Replicas: 2},
-				{Name: "B", Replicas: 0},
+				{Name: "A", Replicas: 1},
+				{Name: "B", Replicas: 1},
 			},
 		},
 		{
@@ -168,9 +168,9 @@ func Test_dispenser_takeByWeight(t *testing.T) {
 				{ClusterName: "C", Weight: 60},
 			},
 			desired: []workv1alpha2.TargetCluster{
-				{Name: "A", Replicas: 3},
+				{Name: "A", Replicas: 2},
 				{Name: "B", Replicas: 2},
-				{Name: "C", Replicas: 0},
+				{Name: "C", Replicas: 1},
 			},
 		},
 		{
@@ -183,8 +183,8 @@ func Test_dispenser_takeByWeight(t *testing.T) {
 				{ClusterName: "C", Weight: 60},
 			},
 			desired: []workv1alpha2.TargetCluster{
-				{Name: "A", Replicas: 4},
-				{Name: "B", Replicas: 1}, // TODO(@RainbowMango): comparing to the previous test where assign 5 replicas, this tests kind of scale up 1 replica, but the replica cluster B got reduced from 2 to 1, this is not expected and tracked by https://github.com/karmada-io/karmada/issues/6735.
+				{Name: "A", Replicas: 3},
+				{Name: "B", Replicas: 2},
 				{Name: "C", Replicas: 1},
 			},
 		},

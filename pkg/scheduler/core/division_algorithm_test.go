@@ -69,9 +69,9 @@ func Test_dynamicDivideReplicas(t *testing.T) {
 				strategyType:      DynamicWeightStrategy,
 			},
 			want: []workv1alpha2.TargetCluster{
-				{Name: ClusterMember1, Replicas: 7},
+				{Name: ClusterMember1, Replicas: 6},
 				{Name: ClusterMember2, Replicas: 4},
-				{Name: ClusterMember3, Replicas: 1},
+				{Name: ClusterMember3, Replicas: 2},
 			},
 			wantErr: false,
 		},
