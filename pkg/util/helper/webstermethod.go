@@ -33,7 +33,14 @@ type Party struct {
 // WebsterPriorityQueue implements heap.Interface using the Webster (Sainte-Laguë) method.
 // The party with the highest Webster priority (Votes/(2*Seats+1)) is at the top.
 type WebsterPriorityQueue struct {
+	// Parties contains all the parties participating in the Webster apportionment method.
+	// Each party has a name, vote count, and current seat allocation.
 	Parties []Party
+
+	// TieBreaker is an optional function used to break ties when two parties have
+	// the same Webster priority. If nil, ties are broken by vote count, then seat count,
+	// then party name to ensure a deterministic result.
+	TieBreaker func(a Party, b Party) bool
 }
 
 // Check if our WebsterPriorityQueue implements necessary interfaces
@@ -52,8 +59,25 @@ func (pq *WebsterPriorityQueue) Less(i, j int) bool {
 	iPriority := pq.Parties[i].Votes / (int64(2*pq.Parties[i].Seats + 1))
 	jPriority := pq.Parties[j].Votes / (int64(2*pq.Parties[j].Seats + 1))
 	if iPriority == jPriority {
-		return (*pq).Parties[i].Votes >= (*pq).Parties[j].Votes // TODO: replace with tie-breaker
+		if pq.TieBreaker != nil {
+			return pq.TieBreaker(pq.Parties[i], pq.Parties[j])
+		}
+
+		// The party with more votes wins the tie.
+		if pq.Parties[i].Votes != pq.Parties[j].Votes {
+			return pq.Parties[i].Votes > pq.Parties[j].Votes
+		}
+
+		// The party with fewer seats wins the tie.
+		if pq.Parties[i].Seats != pq.Parties[j].Seats {
+			return pq.Parties[i].Seats < pq.Parties[j].Seats
+		}
+
+		// If both votes and seats are equal, the party with the lexicographically smaller name wins the tie.
+		// For example, party 'a' wins over party 'b' because 'a' < 'b' lexicographically.
+		return pq.Parties[i].Name < pq.Parties[j].Name
 	}
+
 	return iPriority > jPriority
 }
 
