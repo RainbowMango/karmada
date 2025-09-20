@@ -18,6 +18,7 @@ package helper
 
 import (
 	"container/heap"
+	"sort"
 )
 
 // Party represents a party in the Webster apportionment method.
@@ -102,37 +103,45 @@ func (pq *WebsterPriorityQueue) Pop() interface{} {
 
 // AllocateWebsterSeats allocates new seats using the Webster method.
 // newSeats: number of new seats to allocate across all Parties.
-// Parties: slice of Party with Name and Votes set, Seats may already be assigned.
-func AllocateWebsterSeats(newSeats int32, partyCandidates []Party) []Party {
-	// Initialize queue with all Parties, preserve existing Seats values
+// partyVotes: map of party name to number of votes.
+// initialAssignments: map of party name to initial seat assignments.
+// tieBreaker: function to break ties between two Parties.
+// Returns: slice of Party with updated Seats, sorted by Name in ascending order.
+func AllocateWebsterSeats(newSeats int32, partyVotes map[string]int64, initialAssignments map[string]int32, tieBreaker func(a, b Party) bool) []Party {
+	// Initialize queue with all Parties, apply initialAssignments if provided
 	pq := WebsterPriorityQueue{
-		Parties: make([]Party, len(partyCandidates)),
+		Parties:    make([]Party, 0, len(initialAssignments)+len(partyVotes)),
+		TieBreaker: tieBreaker,
 	}
-	nameToIndex := make(map[string]int, len(partyCandidates))
-	for i, p := range partyCandidates {
-		pq.Parties[i] = p
-		nameToIndex[p.Name] = i
+
+	for n, s := range initialAssignments {
+		pq.Parties = append(pq.Parties, Party{Name: n, Votes: 0, Seats: s})
 	}
+
+	for n, v := range partyVotes {
+		for i, p := range pq.Parties {
+			if p.Name == n {
+				pq.Parties[i].Votes = v
+			}
+		}
+		pq.Parties = append(pq.Parties, Party{Name: n, Votes: v, Seats: 0})
+	}
+
+	if len(pq.Parties) == 0 {
+		return nil
+	}
+
 	heap.Init(&pq)
 
-	remaining := newSeats
-	if remaining <= 0 {
-		return partyCandidates
+	for remaining := newSeats; remaining > 0; remaining-- {
+		nextParty := heap.Pop(&pq).(*Party)
+		nextParty.Seats++
+		heap.Push(&pq, nextParty)
 	}
 
-	for s := int32(0); s < remaining; s++ {
-		// Pop the party with the highest priority
-		top := heap.Pop(&pq).(Party)
-		top.Seats++
-		heap.Push(&pq, top)
-	}
+	sort.Slice(pq.Parties, func(i, j int) bool {
+		return pq.Parties[i].Name < pq.Parties[j].Name
+	})
 
-	// Collect results in the same order as input
-	result := make([]Party, len(partyCandidates))
-	for _, p := range pq.Parties {
-		if idx, ok := nameToIndex[p.Name]; ok {
-			result[idx] = p
-		}
-	}
-	return result
+	return pq.Parties
 }
