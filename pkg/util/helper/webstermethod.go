@@ -33,60 +33,60 @@ type Party struct {
 // WebsterPriorityQueue implements heap.Interface using the Webster (Sainte-Laguë) method.
 // The party with the highest Webster priority (Votes/(2*Seats+1)) is at the top.
 type WebsterPriorityQueue struct {
-	parties []Party
+	Parties []Party
 }
 
 // Check if our WebsterPriorityQueue implements necessary interfaces
 var _ heap.Interface = &WebsterPriorityQueue{}
 
-// Len returns the number of parties in the queue.
+// Len returns the number of Parties in the queue.
 func (pq *WebsterPriorityQueue) Len() int {
-	return len(pq.parties)
+	return len(pq.Parties)
 }
 
-// Less compares two parties by their Webster priority.
+// Less compares two Parties by their Webster priority.
 // The party with the higher priority comes first.
 func (pq *WebsterPriorityQueue) Less(i, j int) bool {
-	// In the Webster method, compare the priority of two parties:
+	// In the Webster method, compare the priority of two Parties:
 	// the one with the higher value of Votes/(2*Seats+1) gets the next seat.
-	iPriority := pq.parties[i].Votes / (int64(2*pq.parties[i].Seats + 1))
-	jPriority := pq.parties[j].Votes / (int64(2*pq.parties[j].Seats + 1))
+	iPriority := pq.Parties[i].Votes / (int64(2*pq.Parties[i].Seats + 1))
+	jPriority := pq.Parties[j].Votes / (int64(2*pq.Parties[j].Seats + 1))
 	if iPriority == jPriority {
-		return (*pq).parties[i].Votes >= (*pq).parties[j].Votes // TODO: replace with tie-breaker
+		return (*pq).Parties[i].Votes >= (*pq).Parties[j].Votes // TODO: replace with tie-breaker
 	}
 	return iPriority > jPriority
 }
 
-// Swap swaps two parties in the queue.
+// Swap swaps two Parties in the queue.
 func (pq *WebsterPriorityQueue) Swap(i, j int) {
-	pq.parties[i], pq.parties[j] = pq.parties[j], pq.parties[i]
+	pq.Parties[i], pq.Parties[j] = pq.Parties[j], pq.Parties[i]
 }
 
 // Push adds a new party to the queue.
 func (pq *WebsterPriorityQueue) Push(x interface{}) {
-	pq.parties = append(pq.parties, x.(Party))
+	pq.Parties = append(pq.Parties, x.(Party))
 }
 
 // Pop removes and returns the party with the highest priority.
 func (pq *WebsterPriorityQueue) Pop() interface{} {
-	old := pq.parties
+	old := pq.Parties
 	n := len(old)
 	item := old[n-1]
-	pq.parties = old[0 : n-1]
+	pq.Parties = old[0 : n-1]
 	return item
 }
 
 // AllocateWebsterSeats allocates new seats using the Webster method.
-// newSeats: number of new seats to allocate across all parties.
-// parties: slice of Party with Name and Votes set, Seats may already be assigned.
+// newSeats: number of new seats to allocate across all Parties.
+// Parties: slice of Party with Name and Votes set, Seats may already be assigned.
 func AllocateWebsterSeats(newSeats int32, partyCandidates []Party) []Party {
-	// Initialize queue with all parties, preserve existing Seats values
+	// Initialize queue with all Parties, preserve existing Seats values
 	pq := WebsterPriorityQueue{
-		parties: make([]Party, len(partyCandidates)),
+		Parties: make([]Party, len(partyCandidates)),
 	}
 	nameToIndex := make(map[string]int, len(partyCandidates))
 	for i, p := range partyCandidates {
-		pq.parties[i] = p
+		pq.Parties[i] = p
 		nameToIndex[p.Name] = i
 	}
 	heap.Init(&pq)
@@ -105,7 +105,7 @@ func AllocateWebsterSeats(newSeats int32, partyCandidates []Party) []Party {
 
 	// Collect results in the same order as input
 	result := make([]Party, len(partyCandidates))
-	for _, p := range pq.parties {
+	for _, p := range pq.Parties {
 		if idx, ok := nameToIndex[p.Name]; ok {
 			result[idx] = p
 		}

@@ -122,11 +122,11 @@ func (a *Dispenser) TakeByWeight(w ClusterWeightInfoList) {
 
 	// Initialize priority queue with all clusters
 	pq := WebsterPriorityQueue{
-		parties: make([]Party, w.Len()), // TODO: should change to initialized value
+		Parties: make([]Party, w.Len()), // TODO: should change to initialized value
 	}
 	nameToIndex := make(map[string]int, w.Len())
 	for i, cluster := range w {
-		pq.parties[i] = Party{
+		pq.Parties[i] = Party{
 			Name:  cluster.ClusterName,
 			Votes: cluster.Weight,
 		}
@@ -145,7 +145,7 @@ func (a *Dispenser) TakeByWeight(w ClusterWeightInfoList) {
 
 	// Collect results in the same order as input
 	result := make([]workv1alpha2.TargetCluster, w.Len())
-	for _, party := range pq.parties {
+	for _, party := range pq.Parties {
 		if idx, ok := nameToIndex[party.Name]; ok {
 			result[idx] = workv1alpha2.TargetCluster{
 				Name:     party.Name,
