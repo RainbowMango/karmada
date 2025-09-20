@@ -134,7 +134,7 @@ func AllocateWebsterSeats(newSeats int32, partyVotes map[string]int64, initialAs
 	heap.Init(&pq)
 
 	for remaining := newSeats; remaining > 0; remaining-- {
-		nextParty := heap.Pop(&pq).(*Party)
+		nextParty := heap.Pop(&pq).(Party)
 		nextParty.Seats++
 		heap.Push(&pq, nextParty)
 	}

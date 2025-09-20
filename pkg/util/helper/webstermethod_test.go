@@ -39,11 +39,10 @@ func ExampleAllocateWebsterSeats() {
 	// Gamma: 1 seats
 }
 
-// This test checks the Webster (Sainte-Laguë) seat allocation for the classic example from
-// https://en.wikipedia.org/wiki/Sainte-Lagu%C3%AB_method, where 230,000 voters allocate 8 seats
-// among 4 Parties (PartyA: 100,000 votes, PartyB: 80,000 votes, PartyC: 30,000 votes, PartyD: 20,000 votes).
-// The expected seat distribution after each round matches the step-by-step allocation shown in the Wikipedia article.
 func TestAllocateWebsterSeats(t *testing.T) {
+	// This is used for test the classic example from https://en.wikipedia.org/wiki/Sainte-Lagu%C3%AB_method,
+	// where 230,000 voters allocate 8 seats among 4 Parties.
+	// The expected seat distribution after each round matches the step-by-step allocation shown in the Wikipedia.
 	partiesVotes := map[string]int64{
 		"PartyA": 100000,
 		"PartyB": 80000,
