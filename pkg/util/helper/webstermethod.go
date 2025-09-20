@@ -30,71 +30,70 @@ type Party struct {
 	Seats int32
 }
 
-// WebsterPriorityQueue implements heap.Interface for Party using the Webster (Sainte-Laguë) method.
+// WebsterPriorityQueue implements heap.Interface using the Webster (Sainte-Laguë) method.
 // The party with the highest Webster priority (Votes/(2*Seats+1)) is at the top.
-type WebsterPriorityQueue []Party
+type WebsterPriorityQueue struct {
+	parties []Party
+}
 
 // Check if our WebsterPriorityQueue implements necessary interfaces
 var _ heap.Interface = &WebsterPriorityQueue{}
 
 // Len returns the number of parties in the queue.
 func (pq *WebsterPriorityQueue) Len() int {
-	return len(*pq)
+	return len(pq.parties)
 }
 
 // Less compares two parties by their Webster priority.
 // The party with the higher priority comes first.
 func (pq *WebsterPriorityQueue) Less(i, j int) bool {
-	// In the Webster method, compare the priority of two parties: the one with the higher value of Votes/(2*Seats+1) gets the next seat.
-	// We avoid using division here to prevent loss of precision and potential rounding errors
-	// that can occur with floating point arithmetic, especially when dealing with large integers.
-	// Instead, we use cross-multiplication to compare the two fractions directly:
-	// pq[i].Votes * (2*pq[j].Seats+1) > pq[j].Votes * (2*pq[i].Seats+1)
-	// This approach ensures the comparison is both accurate and efficient, as it only involves integer operations.
-	// It also avoids the performance overhead and subtle bugs that can arise from floating point division.
-	left := (*pq)[i].Votes * int64(2*(*pq)[j].Seats+1)
-	right := (*pq)[j].Votes * int64(2*(*pq)[i].Seats+1)
-	if left == right {
-		return (*pq)[i].Votes >= (*pq)[j].Votes
+	// In the Webster method, compare the priority of two parties:
+	// the one with the higher value of Votes/(2*Seats+1) gets the next seat.
+	iPriority := pq.parties[i].Votes / (int64(2*pq.parties[i].Seats + 1))
+	jPriority := pq.parties[j].Votes / (int64(2*pq.parties[j].Seats + 1))
+	if iPriority == jPriority {
+		return (*pq).parties[i].Votes >= (*pq).parties[j].Votes // TODO: replace with tie-breaker
 	}
-	return left > right
+	return iPriority > jPriority
 }
 
 // Swap swaps two parties in the queue.
 func (pq *WebsterPriorityQueue) Swap(i, j int) {
-	(*pq)[i], (*pq)[j] = (*pq)[j], (*pq)[i]
+	pq.parties[i], pq.parties[j] = pq.parties[j], pq.parties[i]
 }
 
 // Push adds a new party to the queue.
 func (pq *WebsterPriorityQueue) Push(x interface{}) {
-	*pq = append(*pq, x.(Party))
+	pq.parties = append(pq.parties, x.(Party))
 }
 
 // Pop removes and returns the party with the highest priority.
 func (pq *WebsterPriorityQueue) Pop() interface{} {
-	old := *pq
+	old := pq.parties
 	n := len(old)
 	item := old[n-1]
-	*pq = old[0 : n-1]
+	pq.parties = old[0 : n-1]
 	return item
 }
 
 // AllocateWebsterSeats allocates new seats using the Webster method.
 // newSeats: number of new seats to allocate across all parties.
 // parties: slice of Party with Name and Votes set, Seats may already be assigned.
-func AllocateWebsterSeats(newSeats int32, parties []Party) []Party {
+func AllocateWebsterSeats(newSeats int32, partyCandidates []Party) []Party {
 	// Initialize queue with all parties, preserve existing Seats values
-	pq := make(WebsterPriorityQueue, len(parties))
-	nameToIndex := make(map[string]int, len(parties))
-	for i, p := range parties {
-		pq[i] = p
+	pq := WebsterPriorityQueue{
+		parties: make([]Party, len(partyCandidates)),
+	}
+	nameToIndex := make(map[string]int, len(partyCandidates))
+	for i, p := range partyCandidates {
+		pq.parties[i] = p
 		nameToIndex[p.Name] = i
 	}
 	heap.Init(&pq)
 
 	remaining := newSeats
 	if remaining <= 0 {
-		return parties
+		return partyCandidates
 	}
 
 	for s := int32(0); s < remaining; s++ {
@@ -105,8 +104,8 @@ func AllocateWebsterSeats(newSeats int32, parties []Party) []Party {
 	}
 
 	// Collect results in the same order as input
-	result := make([]Party, len(parties))
-	for _, p := range pq {
+	result := make([]Party, len(partyCandidates))
+	for _, p := range pq.parties {
 		if idx, ok := nameToIndex[p.Name]; ok {
 			result[idx] = p
 		}
