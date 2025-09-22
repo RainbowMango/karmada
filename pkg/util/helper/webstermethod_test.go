@@ -194,29 +194,44 @@ func TestAllocateWebsterSeats(t *testing.T) {
 			newSeats: 1,
 			partyVotes: map[string]int64{
 				"PartyA": 1,
+				"PartyB": 2,
+			},
+			initialAssignments: nil,
+			tieBreaker:         nil,
+			expected: []Party{
+				{Name: "PartyA", Votes: 1, Seats: 0},
+				{Name: "PartyB", Votes: 1, Seats: 1},
+			},
+		},
+		{
+			name:     "tie-breaker is nil, expect break tie by seats",
+			newSeats: 1,
+			partyVotes: map[string]int64{
+				"PartyA": 0,
+				"PartyB": 0,
+			},
+			initialAssignments: map[string]int32{
+				"PartyA": 2,
+				"PartyB": 1,
+			},
+			tieBreaker: nil,
+			expected: []Party{
+				{Name: "PartyA", Votes: 0, Seats: 2},
+				{Name: "PartyB", Votes: 0, Seats: 2},
+			},
+		},
+		{
+			name:     "tie-breaker is nil, expect break tie by name",
+			newSeats: 1,
+			partyVotes: map[string]int64{
+				"PartyA": 1,
 				"PartyB": 1,
 			},
 			initialAssignments: nil,
 			tieBreaker:         nil,
 			expected: []Party{
-				{Name: "PartyA", Votes: 1, Seats: 1},
-				{Name: "PartyB", Votes: 1, Seats: 0},
-			},
-		},
-		{
-			name:     "first allocation, tie-breaker is nil, expect default tie-breaker by votes, seats, name",
-			newSeats: 2,
-			partyVotes: map[string]int64{
-				"Alpha":   100,
-				"Bravo":   100,
-				"Charlie": 100,
-			},
-			initialAssignments: nil,
-			tieBreaker:         nil,
-			expected: []Party{
-				{Name: "Alpha", Votes: 100, Seats: 1},
-				{Name: "Bravo", Votes: 100, Seats: 1},
-				{Name: "Charlie", Votes: 100, Seats: 0},
+				{Name: "PartyA", Votes: 0, Seats: 1},
+				{Name: "PartyB", Votes: 0, Seats: 0},
 			},
 		},
 		{
