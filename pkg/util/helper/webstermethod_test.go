@@ -235,22 +235,35 @@ func TestAllocateWebsterSeats(t *testing.T) {
 			},
 		},
 		{
-			name:     "first allocation, custom tie-breaker by reverse name, expect custom tie-breaker controls seat",
-			newSeats: 2,
+			name:     "custom tie-breaker returns true, expect custom tie-breaker controls seat",
+			newSeats: 1,
 			partyVotes: map[string]int64{
-				"Alpha":   100,
-				"Bravo":   100,
-				"Charlie": 100,
+				"PartyA": 1,
+				"PartyB": 1,
 			},
 			initialAssignments: nil,
 			tieBreaker: func(a, b Party) bool {
-				// reverse lexicographical order
-				return a.Name > b.Name
+				return true
 			},
 			expected: []Party{
-				{Name: "Alpha", Votes: 100, Seats: 0},
-				{Name: "Bravo", Votes: 100, Seats: 1},
-				{Name: "Charlie", Votes: 100, Seats: 1},
+				{Name: "PartyA", Votes: 1, Seats: 1},
+				{Name: "PartyB", Votes: 1, Seats: 0},
+			},
+		},
+		{
+			name:     "custom tie-breaker returns false, expect custom tie-breaker controls seat",
+			newSeats: 1,
+			partyVotes: map[string]int64{
+				"PartyA": 1,
+				"PartyB": 1,
+			},
+			initialAssignments: nil,
+			tieBreaker: func(a, b Party) bool {
+				return false
+			},
+			expected: []Party{
+				{Name: "PartyA", Votes: 1, Seats: 0},
+				{Name: "PartyB", Votes: 1, Seats: 1},
 			},
 		},
 		{
