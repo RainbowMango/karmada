@@ -162,6 +162,129 @@ func TestAllocateWebsterSeats(t *testing.T) {
 				{Name: "PartyD", Votes: 20000, Seats: 1},
 			},
 		},
+		{
+			name:               "empty party votes, expect nil result",
+			newSeats:           1,
+			partyVotes:         map[string]int64{},
+			initialAssignments: nil,
+			tieBreaker:         nil,
+			expected:           nil,
+		},
+		{
+			name:               "party votes not empty, newSeats is 0, expect all seats 0",
+			newSeats:           0,
+			partyVotes:         map[string]int64{"PartyA": 100, "PartyB": 200},
+			initialAssignments: nil,
+			tieBreaker:         nil,
+			expected: []Party{
+				{Name: "PartyA", Votes: 100, Seats: 0},
+				{Name: "PartyB", Votes: 200, Seats: 0},
+			},
+		},
+		{
+			name:               "both party votes and newSeats are 0, expect nil result",
+			newSeats:           0,
+			partyVotes:         map[string]int64{},
+			initialAssignments: nil,
+			tieBreaker:         nil,
+			expected:           nil,
+		},
+		{
+			name:     "tie-breaker is nil, expect break tie by votes",
+			newSeats: 1,
+			partyVotes: map[string]int64{
+				"PartyA": 1,
+				"PartyB": 1,
+			},
+			initialAssignments: nil,
+			tieBreaker:         nil,
+			expected: []Party{
+				{Name: "PartyA", Votes: 1, Seats: 1},
+				{Name: "PartyB", Votes: 1, Seats: 0},
+			},
+		},
+		{
+			name:     "first allocation, tie-breaker is nil, expect default tie-breaker by votes, seats, name",
+			newSeats: 2,
+			partyVotes: map[string]int64{
+				"Alpha":   100,
+				"Bravo":   100,
+				"Charlie": 100,
+			},
+			initialAssignments: nil,
+			tieBreaker:         nil,
+			expected: []Party{
+				{Name: "Alpha", Votes: 100, Seats: 1},
+				{Name: "Bravo", Votes: 100, Seats: 1},
+				{Name: "Charlie", Votes: 100, Seats: 0},
+			},
+		},
+		{
+			name:     "first allocation, custom tie-breaker by reverse name, expect custom tie-breaker controls seat",
+			newSeats: 2,
+			partyVotes: map[string]int64{
+				"Alpha":   100,
+				"Bravo":   100,
+				"Charlie": 100,
+			},
+			initialAssignments: nil,
+			tieBreaker: func(a, b Party) bool {
+				// reverse lexicographical order
+				return a.Name > b.Name
+			},
+			expected: []Party{
+				{Name: "Alpha", Votes: 100, Seats: 0},
+				{Name: "Bravo", Votes: 100, Seats: 1},
+				{Name: "Charlie", Votes: 100, Seats: 1},
+			},
+		},
+		{
+			name:     "non-initial allocation, new party joins, only new party gets new seats",
+			newSeats: 2,
+			partyVotes: map[string]int64{
+				"OldParty": 100,
+				"NewParty": 200,
+			},
+			initialAssignments: map[string]int32{
+				"OldParty": 3,
+			},
+			tieBreaker: nil,
+			expected: []Party{
+				{Name: "NewParty", Votes: 200, Seats: 2},
+				{Name: "OldParty", Votes: 100, Seats: 3},
+			},
+		},
+		{
+			name:     "non-initial allocation, both new and old parties compete for new seats",
+			newSeats: 3,
+			partyVotes: map[string]int64{
+				"OldParty": 100,
+				"NewParty": 200,
+			},
+			initialAssignments: map[string]int32{
+				"OldParty": 1,
+			},
+			tieBreaker: nil,
+			expected: []Party{
+				{Name: "NewParty", Votes: 200, Seats: 2},
+				{Name: "OldParty", Votes: 100, Seats: 2},
+			},
+		},
+		{
+			name:     "non-initial allocation, initialAssignments party not in partyVotes, expect no new seats for that party",
+			newSeats: 2,
+			partyVotes: map[string]int64{
+				"PartyA": 100,
+			},
+			initialAssignments: map[string]int32{
+				"PartyB": 3,
+			},
+			tieBreaker: nil,
+			expected: []Party{
+				{Name: "PartyA", Votes: 100, Seats: 2},
+				{Name: "PartyB", Votes: 0, Seats: 3},
+			},
+		},
 	}
 
 	for _, test := range tests {
