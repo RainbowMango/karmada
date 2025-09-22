@@ -243,11 +243,11 @@ func TestAllocateWebsterSeats(t *testing.T) {
 			},
 			initialAssignments: nil,
 			tieBreaker: func(a, b Party) bool {
-				return true
+				return a.Name < b.Name
 			},
 			expected: []Party{
-				{Name: "PartyA", Votes: 1, Seats: 0},
-				{Name: "PartyB", Votes: 1, Seats: 1}, // depends on the order of party inputs, might not stable
+				{Name: "PartyA", Votes: 1, Seats: 1},
+				{Name: "PartyB", Votes: 1, Seats: 0},
 			},
 		},
 		{
@@ -259,11 +259,11 @@ func TestAllocateWebsterSeats(t *testing.T) {
 			},
 			initialAssignments: nil,
 			tieBreaker: func(a, b Party) bool {
-				return false
+				return a.Name > b.Name
 			},
 			expected: []Party{
-				{Name: "PartyA", Votes: 1, Seats: 1}, // depends on the order of party inputs, might not stable
-				{Name: "PartyB", Votes: 1, Seats: 0},
+				{Name: "PartyA", Votes: 1, Seats: 0},
+				{Name: "PartyB", Votes: 1, Seats: 1},
 			},
 		},
 		{
