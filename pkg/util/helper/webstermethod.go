@@ -27,7 +27,7 @@ type Party struct {
 	Name string
 	// Votes is the number of votes the party received.
 	Votes int64
-	// Seats is the number of seats currently assigned to the party.
+	// Seats is the number of seats assigned to the party.
 	Seats int32
 }
 
@@ -114,17 +114,32 @@ func AllocateWebsterSeats(newSeats int32, partyVotes map[string]int64, initialAs
 		TieBreaker: tieBreaker,
 	}
 
+	// set initial party assignments, the votes default to 0
+	// If a party is present in initialAssignments but not in partyVotes,
+	// it will be initialized with 0 votes and its initial seat count.
+	// Such a party will still be included in the allocation process, but it can not receive new seats.
+	// because the priority of such a party is 0, which is the lowest priority.
 	for n, s := range initialAssignments {
 		pq.Parties = append(pq.Parties, Party{Name: n, Votes: 0, Seats: s})
 	}
 
+	// set party votes, the seats default to 0
 	for n, v := range partyVotes {
+		found := false
 		for i, p := range pq.Parties {
 			if p.Name == n {
 				pq.Parties[i].Votes = v
+				found = true
+				break
 			}
 		}
-		pq.Parties = append(pq.Parties, Party{Name: n, Votes: v, Seats: 0})
+
+		// If a party is present in partyVotes but not in initialAssignments,
+		// it will be initialized with 0 seats and its vote count, and will participate
+		// in the allocation for new seats.
+		if !found {
+			pq.Parties = append(pq.Parties, Party{Name: n, Votes: v, Seats: 0})
+		}
 	}
 
 	if len(pq.Parties) == 0 {
@@ -139,6 +154,8 @@ func AllocateWebsterSeats(newSeats int32, partyVotes map[string]int64, initialAs
 		heap.Push(&pq, nextParty)
 	}
 
+	// sort the parties by name in ascending order, to ensure the result is deterministic.
+	// This will break the heap structure, but it is ok because we will not use the heap structure again.
 	sort.Slice(pq.Parties, func(i, j int) bool {
 		return pq.Parties[i].Name < pq.Parties[j].Name
 	})
