@@ -117,8 +117,9 @@ func AllocateWebsterSeats(newSeats int32, partyVotes map[string]int64, initialAs
 	// set initial party assignments, the votes default to 0
 	// If a party is present in initialAssignments but not in partyVotes,
 	// it will be initialized with 0 votes and its initial seat count.
-	// Such a party will still be included in the allocation process, but it can not receive new seats.
-	// because the priority of such a party is 0, which is the lowest priority.
+	// Such a party will still be included in the allocation process, but
+	// it can not receive new seats, because the priority of such a party is 0,
+	// which is the lowest priority.
 	for n, s := range initialAssignments {
 		pq.Parties = append(pq.Parties, Party{Name: n, Votes: 0, Seats: s})
 	}
