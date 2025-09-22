@@ -285,18 +285,18 @@ func TestAllocateWebsterSeats(t *testing.T) {
 		},
 		{
 			name:     "non-initial allocation, both new and old parties compete for new seats",
-			newSeats: 3,
+			newSeats: 2,
 			partyVotes: map[string]int64{
-				"OldParty": 100,
-				"NewParty": 200,
+				"OldParty": 1,
+				"NewParty": 1,
 			},
 			initialAssignments: map[string]int32{
 				"OldParty": 1,
 			},
 			tieBreaker: nil,
 			expected: []Party{
-				{Name: "NewParty", Votes: 200, Seats: 2},
-				{Name: "OldParty", Votes: 100, Seats: 2},
+				{Name: "NewParty", Votes: 1, Seats: 1},
+				{Name: "OldParty", Votes: 1, Seats: 2},
 			},
 		},
 		{
