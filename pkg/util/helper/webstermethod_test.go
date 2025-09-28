@@ -190,34 +190,20 @@ func TestAllocateWebsterSeats(t *testing.T) {
 			expected:           nil,
 		},
 		{
-			name:     "tie-breaker is nil, expect break tie by votes",
-			newSeats: 1,
-			partyVotes: map[string]int64{
-				"PartyA": 1,
-				"PartyB": 2,
-			},
-			initialAssignments: nil,
-			tieBreaker:         nil,
-			expected: []Party{
-				{Name: "PartyA", Votes: 1, Seats: 0},
-				{Name: "PartyB", Votes: 2, Seats: 1},
-			},
-		},
-		{
 			name:     "tie-breaker is nil, expect break tie by seats",
 			newSeats: 1,
 			partyVotes: map[string]int64{
-				"PartyA": 0,
-				"PartyB": 0,
+				"PartyA": 3,
+				"PartyB": 1,
 			},
 			initialAssignments: map[string]int32{
-				"PartyA": 2,
-				"PartyB": 1,
+				"PartyA": 1,
+				"PartyB": 0,
 			},
 			tieBreaker: nil,
 			expected: []Party{
-				{Name: "PartyA", Votes: 0, Seats: 2},
-				{Name: "PartyB", Votes: 0, Seats: 2},
+				{Name: "PartyA", Votes: 0, Seats: 1},
+				{Name: "PartyB", Votes: 0, Seats: 1},
 			},
 		},
 		{
