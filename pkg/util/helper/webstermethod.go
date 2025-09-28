@@ -64,17 +64,19 @@ func (pq *WebsterPriorityQueue) Less(i, j int) bool {
 			return pq.TieBreaker(pq.Parties[i], pq.Parties[j])
 		}
 
-		// The party with more votes wins the tie.
-		if pq.Parties[i].Votes != pq.Parties[j].Votes {
-			return pq.Parties[i].Votes > pq.Parties[j].Votes
-		}
-
 		// The party with fewer seats wins the tie.
+		// This is because the Webster method inherently favors smaller parties (or, in Karmada's context, smaller clusters).
+		// In Karmada, this method is often used to assign replicas based on static or dynamic weights.
+		// The rationale is that assigning to smaller clusters earlier helps establish High Availability (HA) and enables
+		// Horizontal Pod Autoscaling (HPA) more effectively. By preferring parties (clusters) with fewer seats (replicas),
+		// we promote a more balanced and resilient distribution, which is desirable for HA scenarios.
 		if pq.Parties[i].Seats != pq.Parties[j].Seats {
 			return pq.Parties[i].Seats < pq.Parties[j].Seats
 		}
 
-		// If both votes and seats are equal, the party with the lexicographically smaller name wins the tie.
+		// If both parties have the same priority and the same number of seats,
+		// that means they also have the same number of votes. So we don't have to compare the votes now.
+		// The party with the lexicographically smaller name wins the tie.
 		// For example, party 'a' wins over party 'b' because 'a' < 'b' lexicographically.
 		return pq.Parties[i].Name < pq.Parties[j].Name
 	}
