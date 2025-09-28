@@ -202,8 +202,8 @@ func TestAllocateWebsterSeats(t *testing.T) {
 			},
 			tieBreaker: nil,
 			expected: []Party{
-				{Name: "PartyA", Votes: 0, Seats: 1},
-				{Name: "PartyB", Votes: 0, Seats: 1},
+				{Name: "PartyA", Votes: 3, Seats: 1},
+				{Name: "PartyB", Votes: 1, Seats: 1},
 			},
 		},
 		{
