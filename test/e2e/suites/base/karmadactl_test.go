@@ -947,6 +947,7 @@ var _ = ginkgo.Describe("Karmadactl get testing", func() {
 			cmd := framework.NewKarmadactlCommand(kubeconfig, karmadaContext, karmadactlPath, namespace, karmadactlTimeout, "get", "pods", podName, "--operation-scope", "members", "-C", member1)
 			_, err := cmd.ExecOrDie()
 			gomega.Expect(err).Should(gomega.HaveOccurred())
+			fmt.Printf("Error: %v\n", err)
 			gomega.Expect(strings.Contains(err.Error(), fmt.Sprintf("namespaces \"%s\" not found", namespace))).Should(gomega.BeTrue())
 		})
 	})
