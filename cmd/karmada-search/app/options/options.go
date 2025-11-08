@@ -17,12 +17,16 @@ limitations under the License.
 package options
 
 import (
+	"fmt"
+
 	"github.com/spf13/pflag"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
+	apiserverfeatures "k8s.io/apiserver/pkg/features"
 	genericapiserver "k8s.io/apiserver/pkg/server"
 	genericoptions "k8s.io/apiserver/pkg/server/options"
 	"k8s.io/apiserver/pkg/storage/storagebackend"
+	utilfeature "k8s.io/apiserver/pkg/util/feature"
 	"k8s.io/client-go/kubernetes"
 
 	searchscheme "github.com/karmada-io/karmada/pkg/apis/search/scheme"
@@ -80,6 +84,21 @@ func (o *Options) AddFlags(flags *pflag.FlagSet) {
 	o.Audit.AddFlags(flags)
 	o.Features.AddFlags(flags)
 	o.CoreAPI.AddFlags(flags)
+
+	// Set default value for ListFromCacheSnapshot to false before adding universal flags.
+	// ListFromCacheSnapshot is disabled by default in karmada-search to avoid consistency issues
+	// when serving LIST requests from cache snapshots in a multi-cluster proxy scenario.
+	// The default is set before AddUniversalFlags (which adds --feature-gates flag) so that
+	// it can be overridden by command-line arguments if needed.
+	// Note: --feature-gates flag is added by ServerRunOptions.AddUniversalFlags via ComponentGlobalsRegistry.
+	if err := utilfeature.DefaultMutableFeatureGate.Set(fmt.Sprintf("%s=false", apiserverfeatures.ListFromCacheSnapshot)); err != nil {
+		// If setting fails (e.g., feature gate not registered yet), it's not critical.
+		// The feature gate will use its default value from Kubernetes apiserver, which may be true in newer versions.
+		// Users can still override it via --feature-gates command-line argument.
+		// We silently ignore the error here to avoid breaking the startup process.
+		_ = err
+	}
+
 	o.ServerRunOptions.AddUniversalFlags(flags)
 
 	flags.Lookup("kubeconfig").Usage = "Path to karmada control plane kubeconfig file."

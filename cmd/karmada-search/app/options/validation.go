@@ -17,7 +17,11 @@ limitations under the License.
 package options
 
 import (
+	"fmt"
+
 	utilerrors "k8s.io/apimachinery/pkg/util/errors"
+	apiserverfeatures "k8s.io/apiserver/pkg/features"
+	basecompatibility "k8s.io/component-base/compatibility"
 )
 
 // Validate validates Options.
@@ -31,5 +35,18 @@ func (o *Options) Validate() error {
 	errs = append(errs, o.Features.Validate()...)
 	errs = append(errs, o.CoreAPI.Validate()...)
 	errs = append(errs, o.ServerRunOptions.Validate()...)
+
+	// Validate that ListFromCacheSnapshot feature gate is not enabled.
+	// ListFromCacheSnapshot is not supported in karmada-search due to consistency issues
+	// when serving LIST requests from cache snapshots in a multi-cluster proxy scenario.
+	if o.ServerRunOptions.ComponentGlobalsRegistry != nil {
+		featureGate := o.ServerRunOptions.ComponentGlobalsRegistry.FeatureGateFor(basecompatibility.DefaultKubeComponent)
+		if featureGate != nil && featureGate.Enabled(apiserverfeatures.ListFromCacheSnapshot) {
+			errs = append(errs, fmt.Errorf("ListFromCacheSnapshot feature gate is not supported in karmada-search. "+
+				"Please ensure --feature-gates does not enable ListFromCacheSnapshot, or use --feature-gates=%s=false",
+				apiserverfeatures.ListFromCacheSnapshot))
+		}
+	}
+
 	return utilerrors.NewAggregate(errs)
 }
