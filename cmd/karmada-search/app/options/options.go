@@ -60,6 +60,21 @@ type Options struct {
 
 // NewOptions returns a new Options.
 func NewOptions() *Options {
+	// Set default value for ListFromCacheSnapshot to false before adding universal flags.
+	// ListFromCacheSnapshot is disabled by default in karmada-search to avoid consistency issues
+	// when serving LIST requests from cache snapshots in a multi-cluster proxy scenario.
+	// The default is set before AddUniversalFlags (which adds --feature-gates flag) so that
+	// it can be overridden by command-line arguments if needed.
+	// Note: --feature-gates flag is added by ServerRunOptions.AddUniversalFlags via ComponentGlobalsRegistry.
+	if err := utilfeature.DefaultMutableFeatureGate.Set(fmt.Sprintf("%s=false", apiserverfeatures.ListFromCacheSnapshot)); err != nil {
+		// If setting fails (e.g., feature gate not registered yet), it's not critical.
+		// The feature gate will use its default value from Kubernetes apiserver, which may be true in newer versions.
+		// Users can still override it via --feature-gates command-line argument.
+		// We silently ignore the error here to avoid breaking the startup process.
+		fmt.Sprintf("failed to set feature gate: %v", err)
+		_ = err
+	}
+
 	o := &Options{
 		Etcd:             genericoptions.NewEtcdOptions(storagebackend.NewDefaultConfig(defaultEtcdPathPrefix, searchscheme.Codecs.LegacyCodec(schema.GroupVersion{Group: searchv1alpha1.GroupVersion.Group, Version: searchv1alpha1.GroupVersion.Version}))),
 		SecureServing:    genericoptions.NewSecureServingOptions().WithLoopback(),
