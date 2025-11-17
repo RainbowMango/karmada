@@ -92,6 +92,10 @@ func (c *Controller) Reconcile(ctx context.Context, req controllerruntime.Reques
 		return controllerruntime.Result{}, err
 	}
 
+	klog.ErrorS(nil, "show work kind", "kind", work.Kind)
+	work.Kind = workv1alpha1.ResourceKindWork
+	work.APIVersion = workv1alpha1.GroupVersion.Version
+
 	clusterName, err := names.GetClusterName(work.Namespace)
 	if err != nil {
 		klog.ErrorS(err, "Failed to get member cluster name for work", "namespace", work.Namespace, "name", work.Name)
@@ -358,10 +362,14 @@ func (c *Controller) updateWorkDispatchingConditionIfNeeded(ctx context.Context,
 		return err
 	}
 
+	klog.ErrorS(nil, "show work kind before to unstructured", "kind", work.Kind, "apiVersion", work.APIVersion)
 	obj, err := helper.ToUnstructured(work)
 	if err != nil {
 		return err
 	}
+	klog.ErrorS(nil, "show work kind after to unstructured", "kind", work.Kind)
+	obj.SetKind(workv1alpha1.ResourceKindWork)
+	obj.SetAPIVersion(workv1alpha1.GroupVersion.Version)
 
 	c.eventf(obj, corev1.EventTypeNormal, events.EventReasonWorkDispatching, newWorkDispatchingCondition.Message)
 	return nil
