@@ -59,7 +59,7 @@ func (pl *TestPlugin) Estimate(_ context.Context, _ *schedcache.Snapshot, _ *pb.
 	return pl.inj.estimateReplicaResult.replica, pl.inj.estimateReplicaResult.ret
 }
 
-func (pl *TestPlugin) EstimateComponents(_ context.Context, _ *schedcache.Snapshot, _ []pb.Component) (int32, *framework.Result) {
+func (pl *TestPlugin) EstimateComponents(_ context.Context, _ *schedcache.Snapshot, _ []pb.Component, _ string) (int32, *framework.Result) {
 	return pl.inj.estimateComponentsResult.sets, pl.inj.estimateComponentsResult.ret
 }
 
