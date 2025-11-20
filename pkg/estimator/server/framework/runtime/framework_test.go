@@ -452,7 +452,7 @@ func Test_frameworkImpl_RunEstimateComponentsPlugins(t *testing.T) {
 			if err != nil {
 				t.Errorf("create frame work error:%v", err)
 			}
-			sets, ret := f.RunEstimateComponentsPlugins(ctx, nil, []pb.Component{})
+			sets, ret := f.RunEstimateComponentsPlugins(ctx, nil, []pb.Component{}, "")
 
 			require.Equal(t, tt.expected.ret.Code(), ret.Code())
 			assert.ElementsMatch(t, tt.expected.ret.Reasons(), ret.Reasons())
