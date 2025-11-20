@@ -60,10 +60,8 @@ type ReplicaRequirements struct {
 	// Namespace represents the namespaces belonged to a ResourceRequest
 	// +optional
 	Namespace string `json:"namespace,omitempty" protobuf:"bytes,3,opt,name=namespace"`
-	// PriorityClassName represents the priority class name for a given ResourceRequest
-	// Resource quotas are introduced for multi tenants sharing a cluster
-	// Besides estimate the replica based on nodes' resources, we need to consider the resource quota of a ResourceRequest
-	// ResourceQuota have an associated set of scopes, one of them is priority class
+	// PriorityClassName represents the priority class name for a given ResourceRequest.
+	// It is used by the resource quota estimator to check quota constraints, as ResourceQuota supports priority class as a scope.
 	// +optional
 	PriorityClassName string `json:"priorityClassName,omitempty" protobuf:"bytes,4,opt,name=priorityClassName"`
 }
@@ -133,6 +131,7 @@ type MaxAvailableComponentSetsRequest struct {
 	// Namespace is the namespace of the workload being estimated.
 	// It is used by the accurate estimator to check the quota configurations
 	// in the target member cluster.
+	// +required
 	Namespace string `json:"namespace" protobuf:"bytes,3,opt,name=namespace"`
 }
 
@@ -153,7 +152,7 @@ type Component struct {
 	Replicas int32 `json:"replicas" protobuf:"varint,3,opt,name=replicas"`
 }
 
-// ComponentReplicaRequirements represents the requirements required by each replica.
+// ComponentReplicaRequirements represents the resource and scheduling requirements for each replica.
 type ComponentReplicaRequirements struct {
 	// NodeClaim represents the NodeAffinity, NodeSelector and Tolerations required by each replica.
 	// +optional
@@ -163,10 +162,8 @@ type ComponentReplicaRequirements struct {
 	// +optional
 	ResourceRequest corev1.ResourceList `json:"resourceRequest,omitempty" protobuf:"bytes,2,rep,name=resourceRequest,casttype=k8s.io/api/core/v1.ResourceList,castkey=k8s.io/api/core/v1.ResourceName"`
 
-	// PriorityClassName represents the priority class name for a given ResourceRequest
-	// Resource quotas are introduced for multi tenants sharing a cluster
-	// Besides estimate the replica based on nodes' resources, we need to consider the resource quota of a ResourceRequest
-	// ResourceQuota have an associated set of scopes, one of them is priority class
+	// PriorityClassName represents the priority class name for a given ResourceRequest.
+	// It is used by the resource quota estimator to check quota constraints, as ResourceQuota supports priority class as a scope.
 	// +optional
 	PriorityClassName string `json:"priorityClassName,omitempty" protobuf:"bytes,3,opt,name=priorityClassName"`
 }

@@ -93,9 +93,7 @@ func (pl *resourceQuotaEstimator) Name() string {
 }
 
 // Estimate estimates the replicas allowed by the ResourceQuota constraints.
-func (pl *resourceQuotaEstimator) Estimate(_ context.Context,
-	_ *schedcache.Snapshot,
-	replicaRequirements *pb.ReplicaRequirements) (int32, *framework.Result) {
+func (pl *resourceQuotaEstimator) Estimate(_ context.Context, _ *schedcache.Snapshot, replicaRequirements *pb.ReplicaRequirements) (int32, *framework.Result) {
 	var replica int32 = noQuotaConstraint
 	if !pl.enabled {
 		klog.V(5).Info("Estimator Plugin", "name", Name, "enabled", pl.enabled)
@@ -145,6 +143,11 @@ func (pl *resourceQuotaEstimator) EstimateComponents(_ context.Context, _ *sched
 	if len(components) == 0 {
 		klog.V(5).Infof("%s: received empty components list", pl.Name())
 		return noQuotaConstraint, framework.NewResult(framework.Noopperation, fmt.Sprintf("%s received empty components list", pl.Name()))
+	}
+
+	if namespace == "" {
+		klog.V(5).Infof("%s: namespace is empty, skipping resource quota check", pl.Name())
+		return noQuotaConstraint, framework.NewResult(framework.Success)
 	}
 
 	rqList, err := pl.rqLister.ResourceQuotas(namespace).List(labels.Everything())
