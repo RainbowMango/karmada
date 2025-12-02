@@ -20,6 +20,7 @@ import (
 	"context"
 	"fmt"
 	"sync"
+	"time"
 
 	"k8s.io/apimachinery/pkg/api/equality"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -253,12 +254,49 @@ func (o *objectWatcherImpl) Delete(ctx context.Context, clusterName string, desi
 		klog.Errorf("Failed to delete the resource(kind=%s, %s/%s) in the cluster %s, err: %v.", desireObj.GetKind(), desireObj.GetNamespace(), desireObj.GetName(), clusterName, err)
 		return err
 	}
-	klog.Infof("Deleted the resource(kind=%s, %s/%s) on cluster(%s).", desireObj.GetKind(), desireObj.GetNamespace(), desireObj.GetName(), clusterName)
+	if apierrors.IsNotFound(err) {
+		// Already gone.
+		klog.Infof("Resource(kind=%s, %s/%s) on cluster(%s) is already NotFound.", desireObj.GetKind(), desireObj.GetNamespace(), desireObj.GetName(), clusterName)
+		objectKey := o.genObjectKey(desireObj)
+		o.deleteVersionRecord(dynamicClusterClient.ClusterName, objectKey)
+		return nil
+	}
 
-	objectKey := o.genObjectKey(desireObj)
-	o.deleteVersionRecord(dynamicClusterClient.ClusterName, objectKey)
+	// Ensure-deleted flow: wait until the resource is fully removed from the member cluster.
+	// This relies on the member operator removing its finalizer only after finishing teardown
+	// (e.g., saving checkpoint, cleaning ConfigMap/Secret).
+	klog.Infof("Delete issued for resource(kind=%s, %s/%s) on cluster(%s), waiting for NotFound...", desireObj.GetKind(), desireObj.GetNamespace(), desireObj.GetName(), clusterName)
 
-	return nil
+	// Fixed, conservative defaults for quick verification. No configurables added intentionally.
+	waitInterval := 500 * time.Millisecond
+	waitTimeout := 60 * time.Second
+
+	waitCtx, cancel := context.WithTimeout(ctx, waitTimeout)
+	defer cancel()
+
+	ticker := time.NewTicker(waitInterval)
+	defer ticker.Stop()
+
+	for {
+		select {
+		case <-waitCtx.Done():
+			klog.Errorf("Timeout (%v) waiting for resource(kind=%s, %s/%s) to be fully deleted on cluster(%s).", waitTimeout, desireObj.GetKind(), desireObj.GetNamespace(), desireObj.GetName(), clusterName)
+			return fmt.Errorf("timeout waiting for deletion of %s %s/%s on cluster %s", desireObj.GetKind(), desireObj.GetNamespace(), desireObj.GetName(), clusterName)
+		case <-ticker.C:
+			_, getErr := dynamicClusterClient.DynamicClientSet.Resource(gvr).Namespace(desireObj.GetNamespace()).Get(waitCtx, desireObj.GetName(), metav1.GetOptions{})
+			if apierrors.IsNotFound(getErr) {
+				klog.Infof("Confirmed deletion of resource(kind=%s, %s/%s) on cluster(%s).", desireObj.GetKind(), desireObj.GetNamespace(), desireObj.GetName(), clusterName)
+				objectKey := o.genObjectKey(desireObj)
+				o.deleteVersionRecord(dynamicClusterClient.ClusterName, objectKey)
+				return nil
+			}
+			if getErr != nil {
+				// Transient error, keep polling but surface for visibility.
+				klog.Warningf("While waiting delete: failed to get resource(kind=%s, %s/%s) on cluster(%s): %v", desireObj.GetKind(), desireObj.GetNamespace(), desireObj.GetName(), clusterName, getErr)
+			}
+			// else: still exists, continue polling
+		}
+	}
 }
 
 func (o *objectWatcherImpl) genObjectKey(obj *unstructured.Unstructured) string {
