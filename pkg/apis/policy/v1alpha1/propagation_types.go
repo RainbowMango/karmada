@@ -521,6 +521,92 @@ type Placement struct {
 	// when propagating resources that have replicas in spec (e.g. deployments, statefulsets) to member clusters.
 	// +optional
 	ReplicaScheduling *ReplicaSchedulingStrategy `json:"replicaScheduling,omitempty"`
+
+	// WorkloadAffinity represents inter-workload affinity/anti-affinity scheduling rules.
+	// This enables scheduling decisions based on co-location or separation of workloads
+	// across clusters.
+	// +optional
+	WorkloadAffinity *WorkloadAffinity `json:"workloadAffinity,omitempty"`
+}
+
+// WorkloadAffinity defines inter-workload affinity and anti-affinity rules.
+type WorkloadAffinity struct {
+	// AffinityLabelKey declares the label key on the workload template that exposes
+	// its affinity identity. The label value under this key represents the
+	// workload's group identifier that other workloads can match against.
+	//
+	// Only a single key is supported initially. If multiple keys are needed in
+	// the future, a new field (e.g., labelKeys) can be added without breaking
+	// compatibility.
+	//
+	// The key must be a valid Kubernetes label key.
+	//
+	// Example:
+	//   Workload defines label: "affinity.karmada.io/group : mysql.db.backend"，
+	//   a consumer workload can declare affinity to this group value in its
+	//   WorkloadAffinityTerm.
+	//
+	// +required
+	AffinityLabelKey string `json:"affinityLabelKey"`
+
+	// Affinity represents the inter-workload affinity scheduling rules.
+	// These are hard requirements - workloads will only be scheduled to clusters that
+	// satisfy the affinity term if specified.
+	//
+	// +optional
+	Affinity *WorkloadAffinityTerm `json:"affinity,omitempty"`
+
+	// AntiAffinity represents the inter-workload anti-affinity scheduling rules.
+	// These are hard requirements - workloads will be scheduled to avoid clusters
+	// where matching workloads are already scheduled.
+	//
+	// +optional
+	AntiAffinity *WorkloadAntiAffinityTerm `json:"antiAffinity,omitempty"`
+
+	// Note: The Affinity and AntiAffinity terms are both required to be met during scheduling.
+	// If we need more flexible rules (e.g., preferred scheduling), we can consider adding
+	// PreferredAffinity and PreferredAntiAffinity fields in the future.
+}
+
+// WorkloadAffinityTerm defines affinity rules for co-locating with specific workload groups.
+type WorkloadAffinityTerm struct {
+	// AffinityLabelValue is the required label value under WorkloadAffinity.AffinityLabelKey
+	// that identifies the target workload group to co-locate with. Only a single value is
+	// supported for now; if richer expressions are needed in the future, new fields can be
+	// added without breaking compatibility.
+	//
+	// +kubebuilder:validation:MinLength=1
+	// +kubebuilder:validation:MaxLength=63
+	// +required
+	AffinityLabelValue string `json:"affinityLabelValue"`
+
+	// AllowBootstrap controls whether this workload can be scheduled when no workloads
+	// with the specified label key/values currently exist in the system.
+	//
+	// When set to true (default), the affinity requirement is relaxed for the first workload of
+	// a group - if no existing workloads match the label values, the scheduler will not
+	// block scheduling. This allows bootstrapping new workload groups without
+	// encountering scheduling deadlocks, providing the best user experience out of the box.
+	//
+	// When set to false, strict affinity enforcement is applied - the workload
+	// will only be scheduled if matching workloads already exist in the system.
+	//
+	// +kubebuilder:default=true
+	// +optional
+	AllowBootstrap *bool `json:"allowBootstrap,omitempty"`
+}
+
+// WorkloadAntiAffinityTerm defines anti-affinity rules for separating from specific workload groups.
+type WorkloadAntiAffinityTerm struct {
+	// AffinityLabelValue is the label value under WorkloadAffinity.AffinityLabelKey that
+	// identifies workload groups to avoid. Only a single value is supported for now; if
+	// more expressive rules are needed later, new fields can be introduced while keeping
+	// compatibility.
+	//
+	// +kubebuilder:validation:MinLength=1
+	// +kubebuilder:validation:MaxLength=63
+	// +required
+	AffinityLabelValue string `json:"affinityLabelValue"`
 }
 
 // SpreadFieldValue is the type to define valid values for SpreadConstraint.SpreadByField
