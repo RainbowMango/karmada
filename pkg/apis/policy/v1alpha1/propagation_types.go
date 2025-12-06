@@ -521,6 +521,92 @@ type Placement struct {
 	// when propagating resources that have replicas in spec (e.g. deployments, statefulsets) to member clusters.
 	// +optional
 	ReplicaScheduling *ReplicaSchedulingStrategy `json:"replicaScheduling,omitempty"`
+
+	// WorkloadAffinity represents inter-workload affinity/anti-affinity scheduling rules.
+	// This enables scheduling decisions based on co-location or separation of workloads
+	// across clusters.
+	// +optional
+	WorkloadAffinity *WorkloadAffinity `json:"workloadAffinity,omitempty"`
+}
+
+// WorkloadAffinity defines inter-workload affinity and anti-affinity rules.
+type WorkloadAffinity struct {
+	// AffinityLabelKey declares the label key on the workload template that exposes
+	// its affinity identity. The label value under this key represents the
+	// workload's group identifier that other workloads can match against.
+	//
+	// Only a single key is supported initially. If multiple keys are needed in
+	// the future, a new field (e.g., labelKeys) can be added without breaking
+	// compatibility.
+	//
+	// The key must be a valid Kubernetes label key.
+	//
+	// +required
+	AffinityLabelKey string `json:"affinityLabelKey"`
+
+	// Affinity represents the inter-workload affinity scheduling rules.
+	// These are hard requirements - workloads will only be scheduled to clusters that
+	// satisfy the affinity term if specified.
+	//
+	// +optional
+	Affinity *WorkloadAffinityTerm `json:"affinity,omitempty"`
+
+	// AntiAffinity represents the inter-workload anti-affinity scheduling rules.
+	// These are hard requirements - workloads will be scheduled to avoid clusters
+	// where matching workloads are already scheduled.
+	//
+	// +optional
+	AntiAffinity *WorkloadAntiAffinityTerm `json:"antiAffinity,omitempty"`
+
+	// Note: The Affinity and AntiAffinity terms are both required to be met during scheduling.
+	// If we need more flexible rules (e.g., preferred scheduling), we can consider adding
+	// PreferredAffinity and PreferredAntiAffinity fields in the future.
+}
+
+// WorkloadAffinityTerm defines affinity rules for co-locating with specific workload groups.
+type WorkloadAffinityTerm struct {
+	// RequireSameGroup indicates the workload should co-locate with workloads
+	// that share the same affinity group. When enabled, the scheduler will only
+	// permit clusters where workloads with the same affinity group already exist.
+	//
+	// This field is required currently as more expressive selectors are not yet
+	// supported. When additional selector fields are introduced in the future,
+	// this field will be made optional to allow alternative affinity matching strategies.
+	//
+	// +kubebuilder:validation:Enum=true
+	// +required
+	RequireSameGroup *bool `json:"requireSameGroup"`
+
+	// AllowBootstrap controls whether this workload can be scheduled when no workloads
+	// with the same affinity group currently exist in the system.
+	//
+	// It defaults to true, which means the affinity requirement is relaxed for the first workload of
+	// a group - if no existing workloads with the same affinity group are found, the scheduler will not
+	// block scheduling. This allows bootstrapping new workload groups without
+	// encountering scheduling deadlocks, providing the best user experience out of the box.
+	//
+	// When set to false, strict affinity enforcement is applied - the workload
+	// will only be scheduled if workloads with the same affinity group already exist in the system.
+	//
+	// +kubebuilder:default=true
+	// +optional
+	AllowBootstrap *bool `json:"allowBootstrap,omitempty"`
+}
+
+// WorkloadAntiAffinityTerm defines anti-affinity rules for separating from specific workload groups.
+type WorkloadAntiAffinityTerm struct {
+	// RejectSameGroup indicates the workload should reject co-locating with workloads
+	// that share the same affinity group. When enabled, the scheduler will reject
+	// clusters where workloads with the same affinity group already exist.
+	// This is a hard constraint - workloads will not be scheduled to such clusters.
+	//
+	// This field is required currently as more expressive selectors are not yet
+	// supported. When additional selector fields are introduced in the future,
+	// this field will be made optional to allow alternative anti-affinity matching strategies.
+	//
+	// +kubebuilder:validation:Enum=true
+	// +required
+	RejectSameGroup *bool `json:"rejectSameGroup"`
 }
 
 // SpreadFieldValue is the type to define valid values for SpreadConstraint.SpreadByField
