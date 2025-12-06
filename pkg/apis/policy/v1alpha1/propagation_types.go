@@ -521,6 +521,172 @@ type Placement struct {
 	// when propagating resources that have replicas in spec (e.g. deployments, statefulsets) to member clusters.
 	// +optional
 	ReplicaScheduling *ReplicaSchedulingStrategy `json:"replicaScheduling,omitempty"`
+
+	// WorkloadAffinity represents inter-workload affinity/anti-affinity scheduling rules.
+	// This enables scheduling decisions based on co-location or separation of workloads
+	// across clusters.
+	// +optional
+	WorkloadAffinity *WorkloadAffinity `json:"workloadAffinity,omitempty"`
+}
+
+// WorkloadAffinity defines inter-workload affinity and anti-affinity rules.
+type WorkloadAffinity struct {
+	// AffinityGroupNames defines the list of affinity group names for workloads propagated
+	// by this PropagationPolicy/ClusterPropagationPolicy. These group names serve as identifiers
+	// that other workloads can reference when setting up their affinity or anti-affinity rules.
+	//
+	// A workload can define multiple affinity groups, allowing other workloads to
+	// establish relationships based on different aspects.
+	//
+	// Each group name must be a valid DNS subdomain (RFC 1123):
+	// - Contains only lowercase alphanumeric characters, '-', or '.'
+	// - Starts and ends with an alphanumeric character
+	// - Maximum length is 253 characters
+	//
+	// Examples:
+	//
+	// Affinity Example: Database enables consumer workloads to co-locate for efficiency
+	//   MySQL Database workload defines:
+	//     affinityGroupNames: ["mysql.db.backend"]
+	//   Backend API workload sets affinity to co-locate with database:
+	//     affinity:
+	//       affinityGroupNames: ["mysql.db.backend"]
+	//   This ensures the API and database are on the same cluster, improving data transfer
+	//   efficiency by reducing network latency.
+	//
+	// Anti-Affinity Example: HA workloads avoid each other for fault tolerance
+	//   Flink Application A (HA for payment processing) defines:
+	//     affinityGroupNames: ["flink.payment.ha"]
+	//   Flink Application B (HA for payment processing) sets anti-affinity:
+	//     antiAffinity:
+	//       affinityGroupNames: ["flink.payment.ha"]
+	//   This ensures that both payment processing instances are scheduled on different
+	//   clusters, providing fault tolerance and preventing single point of failure.
+	//
+	// +kubebuilder:validation:MaxItems=10
+	// +optional
+	AffinityGroupNames []string `json:"affinityGroupNames,omitempty"`
+
+	// Affinity represents the inter-workload affinity scheduling rules.
+	// These are hard requirements - workloads will only be scheduled to clusters that
+	// satisfy the affinity term if specified.
+	//
+	// +optional
+	Affinity *WorkloadAffinityTerm `json:"affinity,omitempty"`
+
+	// AntiAffinity represents the inter-workload anti-affinity scheduling rules.
+	// These are hard requirements - workloads will be scheduled to avoid clusters
+	// where matching workloads are already scheduled.
+	//
+	// +optional
+	AntiAffinity *WorkloadAntiAffinityTerm `json:"antiAffinity,omitempty"`
+
+	// Note: The Affinity and AntiAffinity terms are both required to be met during scheduling.
+	// If we need more flexible rules (e.g., preferred scheduling), we can consider adding
+	// PreferredAffinity and PreferredAntiAffinity fields in the future.
+}
+
+// WorkloadAffinityTerm defines affinity rules for co-locating with specific workload groups.
+type WorkloadAffinityTerm struct {
+	// AffinityGroupNames is a list of affinity group names to match.
+	// This workload will be scheduled to enforce affinity with workloads
+	// in these groups.
+	//
+	// When multiple group names are specified, the matching uses OR logic - a workload
+	// matches if it belongs to ANY of the specified groups. This allows establishing
+	// relationships with multiple types of workloads (e.g., co-locate with either
+	// MySQL or PostgreSQL databases).
+	//
+	// Each group name must be a valid DNS subdomain (RFC 1123):
+	// - Contains only lowercase alphanumeric characters, '-', or '.'
+	// - Starts and ends with an alphanumeric character
+	// - Maximum length is 253 characters
+	//
+	// Examples:
+	// - ["mysql.db.prod"] - Affinity to MySQL production database group
+	// - ["mysql.db.backend", "postgresql.db.backend"] - Affinity to either MySQL or PostgreSQL databases
+	// - ["cache.redis.session", "cache.memcached.session"] - Affinity to either Redis or Memcached cache
+	//
+	// +kubebuilder:validation:MinItems=1
+	// +kubebuilder:validation:MaxItems=10
+	// +required
+	AffinityGroupNames []string `json:"affinityGroupNames"`
+
+	// AllowEmptyGroup controls whether this workload can be scheduled when no workloads
+	// in the specified affinity groups currently exist in the system.
+	//
+	// When set to true, the affinity requirement is relaxed for the first workload of
+	// a group - if no existing workloads match the affinity groups, the scheduler will
+	// not block scheduling. This allows bootstrapping new workload groups without
+	// encountering scheduling deadlocks.
+	//
+	// When set to false (default), strict affinity enforcement is applied - the workload
+	// will only be scheduled if matching workloads already exist in the system.
+	//
+	// Use cases:
+	// - Set to true: For the first instance of a service (e.g., the initial database
+	//   deployment). The first instance can be scheduled freely, and subsequent instances
+	//   will follow the affinity rules.
+	// - Set to false: For dependent services that must always co-locate with existing
+	//   workloads (e.g., a cache that should only run where a database exists).
+	//
+	// +kubebuilder:default=false
+	// +optional
+	AllowEmptyGroup *bool `json:"allowEmptyGroup,omitempty"`
+
+	// TopologyKey defines the scope for affinity evaluation.
+	// It specifies the cluster topology domain for co-location or separation decisions.
+	//
+	// Supported values:
+	// - "topology.karmada.io/cluster" (default): Affinity is evaluated per cluster
+	// - "topology.karmada.io/region": Affinity is evaluated per region
+	// - "topology.karmada.io/zone": Affinity is evaluated per zone
+	//
+	// If not specified, defaults to "topology.karmada.io/cluster".
+	//
+	// +kubebuilder:default="topology.karmada.io/cluster"
+	// +kubebuilder:validation:Enum=topology.karmada.io/cluster;topology.karmada.io/region;topology.karmada.io/zone
+	// +optional
+	TopologyKey string `json:"topologyKey,omitempty"`
+}
+
+// WorkloadAntiAffinityTerm defines anti-affinity rules for separating from specific workload groups.
+type WorkloadAntiAffinityTerm struct {
+	// AffinityGroupNames is a list of affinity group names to avoid.
+	// This workload will be scheduled to avoid clusters where workloads in these groups are deployed.
+	//
+	// When multiple group names are specified, the matching uses OR logic - a workload
+	// matches if it belongs to ANY of the specified groups. This allows establishing
+	// separation from multiple types of workloads.
+	//
+	// Each group name must be a valid DNS subdomain (RFC 1123):
+	// - Contains only lowercase alphanumeric characters, '-', or '.'
+	// - Starts and ends with an alphanumeric character
+	// - Maximum length is 253 characters
+	//
+	// Examples:
+	// - ["flink.payment.ha"] - Avoid other payment processing Flink instances
+	// - ["compute.gpu.intensive", "compute.cpu.intensive"] - Avoid either GPU or CPU intensive workloads
+	//
+	// +kubebuilder:validation:MinItems=1
+	// +kubebuilder:validation:MaxItems=10
+	// +required
+	AffinityGroupNames []string `json:"affinityGroupNames"`
+
+	// TopologyKey defines the scope for anti-affinity evaluation.
+	// It specifies the cluster topology domain for separation decisions.
+	//
+	// Supported values:
+	// - "topology.karmada.io/cluster" (default): Anti-affinity is evaluated per cluster
+	// - "topology.karmada.io/region": Anti-affinity is evaluated per region
+	// - "topology.karmada.io/zone": Anti-affinity is evaluated per zone
+	//
+	// If not specified, defaults to "topology.karmada.io/cluster".
+	//
+	// +kubebuilder:default="topology.karmada.io/cluster"
+	// +kubebuilder:validation:Enum=topology.karmada.io/cluster;topology.karmada.io/region;topology.karmada.io/zone
+	// +optional
+	TopologyKey string `json:"topologyKey,omitempty"`
 }
 
 // SpreadFieldValue is the type to define valid values for SpreadConstraint.SpreadByField
