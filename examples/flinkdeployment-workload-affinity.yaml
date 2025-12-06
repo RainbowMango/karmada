@@ -1,0 +1,142 @@
+# Example: Distributing FlinkDeployment with WorkloadAffinity Anti-Affinity
+#
+# This example demonstrates how to use PropagationPolicy with WorkloadAffinity
+# anti-affinity to distribute Flink across different clusters for high availability.
+
+---
+# Step 1: Define two Flink instances with the SAME affinity group label
+# Both replicas are tagged with "affinity.karmada.io/group: flink-ha-cluster"
+# This shared label is crucial for the anti-affinity rule to work - the scheduler
+# will use this label to identify which workloads should NOT be co-located
+
+# First Flink instance
+apiVersion: flink.apache.org/v1beta1
+kind: FlinkDeployment
+metadata:
+  name: flink-cluster-primary
+  namespace: default
+  labels:
+    # This label identifies the affinity group for high availability
+    # All replicas of this Flink cluster share this label
+    affinity.karmada.io/group: "flink-ha-cluster"
+spec:
+  image: flink:latest
+  flinkVersion: v1_17
+  replicas: 1
+  
+  jobManagerDeploymentSpec:
+    replicas: 1
+    template:
+      spec:
+        containers:
+          - name: jobmanager
+            image: flink:latest
+            ports:
+              - containerPort: 6123
+                name: rpc
+              - containerPort: 6124
+                name: blob
+              - containerPort: 8081
+                name: webui
+  
+  taskManagerSpec:
+    replicas: 3
+    template:
+      spec:
+        containers:
+          - name: taskmanager
+            image: flink:latest
+            ports:
+              - containerPort: 6122
+                name: rpc
+
+---
+# Second Flink instance
+# This is a backup/replica instance of the same Flink cluster
+# It shares the SAME affinity group label "flink-ha-cluster"
+# The anti-affinity rule will ensure this replica is scheduled to a different cluster
+# than the primary instance
+apiVersion: flink.apache.org/v1beta1
+kind: FlinkDeployment
+metadata:
+  name: flink-cluster-secondary
+  namespace: default
+  labels:
+    # IMPORTANT: Same affinity group label as the primary replica
+    # This allows the anti-affinity rule to identify related workloads
+    affinity.karmada.io/group: "flink-ha-cluster"
+spec:
+  image: flink:latest
+  flinkVersion: v1_17
+  replicas: 1
+  
+  jobManagerDeploymentSpec:
+    replicas: 1
+    template:
+      spec:
+        containers:
+          - name: jobmanager
+            image: flink:latest
+            ports:
+              - containerPort: 6123
+                name: rpc
+              - containerPort: 6124
+                name: blob
+              - containerPort: 8081
+                name: webui
+  
+  taskManagerSpec:
+    replicas: 3
+    template:
+      spec:
+        containers:
+          - name: taskmanager
+            image: flink:latest
+            ports:
+              - containerPort: 6122
+                name: rpc
+
+---
+# Step 2: Create a single PropagationPolicy that distributes BOTH Flink instances
+# with anti-affinity constraints
+#
+# This policy uses a label selector to match both Flink instances.
+# The WorkloadAffinity anti-affinity rule ensures that:
+# 1. Both flink-cluster-primary and flink-cluster-secondary are selected
+# 2. They are both distributed across the target clusters
+# 3. No two instances with the same affinity group are scheduled to the same cluster
+# 4. This guarantees high availability across different clusters
+apiVersion: policy.karmada.io/v1alpha1
+kind: PropagationPolicy
+metadata:
+  name: flink-ha-policy
+  namespace: default
+spec:
+  # ResourceSelectors match both Flink instances using label selector
+  resourceSelectors:
+    - apiVersion: flink.apache.org/v1beta1
+      kind: FlinkDeployment
+      labelSelector:
+        matchLabels:
+          affinity.karmada.io/group: "flink-ha-cluster"
+  
+  placement:
+    # Define cluster selection - distribute across three clusters for HA
+    clusterAffinity:
+      clusterNames:
+        - cluster1
+        - cluster2
+        - cluster3
+    
+    # Define workload affinity rules
+    workloadAffinity:
+      # The label key that Flink workloads use to declare their affinity group
+      affinityLabelKey: "affinity.karmada.io/group"
+      
+      # Use anti-affinity to separate Flink instances across different clusters
+      antiAffinity:
+        # RejectSameGroup must be set to true (required field)
+        # The scheduler will extract the affinity group from each workload's label
+        # and reject clusters where workloads with the same group already exist
+        # This ensures high availability by distributing instances across clusters
+        rejectSameGroup: true
