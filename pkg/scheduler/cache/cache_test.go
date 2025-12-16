@@ -148,7 +148,7 @@ func TestSnapshot(t *testing.T) {
 			for _, cluster := range tt.clusters {
 				gotCluster := snapshot.GetCluster(cluster.Name)
 				assert.NotNil(t, gotCluster, "GetCluster(%s) returned nil", cluster.Name)
-				assert.Equal(t, cluster, gotCluster.Cluster(), "GetCluster(%s) returned incorrect cluster", cluster.Name)
+				assert.Equal(t, cluster, gotCluster, "GetCluster(%s) returned incorrect cluster", cluster.Name)
 			}
 
 			// Test GetCluster for non-existent cluster
@@ -156,7 +156,7 @@ func TestSnapshot(t *testing.T) {
 
 			// Verify that the snapshot is a deep copy
 			for i, cluster := range tt.clusters {
-				snapshotCluster := snapshot.GetClusters()[i].Cluster()
+				snapshotCluster := snapshot.GetClusters()[i]
 				assert.Equal(t, cluster, snapshotCluster, "Snapshot cluster should be equal to original")
 			}
 		})

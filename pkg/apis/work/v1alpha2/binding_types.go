@@ -201,6 +201,9 @@ type ObjectReference struct {
 	// Name represents the name of the referent.
 	Name string `json:"name"`
 
+	// Label used for affinity
+	AffinityGroupLabel map[string]string `json:"affinityGroupLabel"`
+
 	// UID of the referent.
 	// +optional
 	UID types.UID `json:"uid,omitempty"`

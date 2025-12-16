@@ -683,6 +683,11 @@ func (s *Scheduler) patchScheduleResultForResourceBinding(oldBinding *workv1alph
 		return err
 	}
 
+	// Update cache to make sure next scheduling cycle has latest RB information
+	if features.FeatureGate.Enabled(features.WorkloadAffinity) {
+		s.schedulerCache.OnResourceBindingUpdate(oldBinding, newBinding)
+	}
+
 	klog.V(4).Infof("Patch schedule to ResourceBinding(%s/%s) succeed", oldBinding.Namespace, oldBinding.Name)
 	return nil
 }

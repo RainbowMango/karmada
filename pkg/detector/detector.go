@@ -796,6 +796,18 @@ func (d *ResourceDetector) ClaimClusterPolicyForObject(object *unstructured.Unst
 // BuildResourceBinding builds a desired ResourceBinding for object.
 func (d *ResourceDetector) BuildResourceBinding(object *unstructured.Unstructured, policySpec *policyv1alpha1.PropagationSpec, policyID string, policyMeta metav1.ObjectMeta, claimFunc func(object metav1.Object, policyId string, objectMeta metav1.ObjectMeta)) (*workv1alpha2.ResourceBinding, error) {
 	bindingName := names.GenerateBindingName(object.GetKind(), object.GetName())
+	objLabels := object.GetLabels()
+
+	// Add anti-affinity label only if present on workload
+	rbLabels := make(map[string]string)
+	if policySpec != nil && policySpec.Placement.WorkloadAffinity != nil {
+		affinityLabel := policySpec.Placement.WorkloadAffinity.AffinityLabelKey
+		if affinityLabel != "" {
+			if groupValue, ok := objLabels[affinityLabel]; ok && groupValue != "" {
+				rbLabels[affinityLabel] = groupValue
+			}
+		}
+	}
 	propagationBinding := &workv1alpha2.ResourceBinding{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      bindingName,
@@ -813,12 +825,13 @@ func (d *ResourceDetector) BuildResourceBinding(object *unstructured.Unstructure
 			ConflictResolution:          policySpec.ConflictResolution,
 			PreserveResourcesOnDeletion: policySpec.PreserveResourcesOnDeletion,
 			Resource: workv1alpha2.ObjectReference{
-				APIVersion:      object.GetAPIVersion(),
-				Kind:            object.GetKind(),
-				Namespace:       object.GetNamespace(),
-				Name:            object.GetName(),
-				UID:             object.GetUID(),
-				ResourceVersion: object.GetResourceVersion(),
+				APIVersion:         object.GetAPIVersion(),
+				Kind:               object.GetKind(),
+				Namespace:          object.GetNamespace(),
+				Name:               object.GetName(),
+				AffinityGroupLabel: rbLabels,
+				UID:                object.GetUID(),
+				ResourceVersion:    object.GetResourceVersion(),
 			},
 		},
 	}

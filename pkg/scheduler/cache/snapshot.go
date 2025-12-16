@@ -19,15 +19,19 @@ package cache
 import (
 	"k8s.io/apimachinery/pkg/util/sets"
 
-	"github.com/karmada-io/karmada/pkg/scheduler/framework"
+	clusterv1alpha1 "github.com/karmada-io/karmada/pkg/apis/cluster/v1alpha1"
 	"github.com/karmada-io/karmada/pkg/util"
 )
 
 // Snapshot is a snapshot of cache ClusterInfo. The scheduler takes a
 // snapshot at the beginning of each scheduling cycle and uses it for its operations in that cycle.
 type Snapshot struct {
-	// clusterInfoList is the list of nodes as ordered in the cache's nodeTree.
-	clusterInfoList []*framework.ClusterInfo
+	// // clusterInfoList is the list of nodes as ordered in the cache's nodeTree.
+	// clusterInfoList []*framework.ClusterInfo
+	clusters     []*clusterv1alpha1.Cluster
+	clustersByRB map[string]sets.Set[string]
+	// Returns a list of name/namespace RBs that match the anti-affinity group value
+	affinityGroups map[AntiKey][]string
 }
 
 // NewEmptySnapshot initializes a Snapshot struct and returns it.
@@ -37,42 +41,50 @@ func NewEmptySnapshot() Snapshot {
 
 // NumOfClusters returns the number of clusters.
 func (s *Snapshot) NumOfClusters() int {
-	return len(s.clusterInfoList)
+	return len(s.clusters)
 }
 
 // GetClusters returns all the clusters.
-func (s *Snapshot) GetClusters() []*framework.ClusterInfo {
-	return s.clusterInfoList
+func (s *Snapshot) GetClusters() []*clusterv1alpha1.Cluster {
+	return s.clusters
 }
 
 // GetReadyClusters returns the clusters in ready status.
-func (s *Snapshot) GetReadyClusters() []*framework.ClusterInfo {
-	var readyClusterInfoList []*framework.ClusterInfo
-	for _, c := range s.clusterInfoList {
-		if util.IsClusterReady(&c.Cluster().Status) {
-			readyClusterInfoList = append(readyClusterInfoList, c)
+func (s *Snapshot) GetReadyClusters() []*clusterv1alpha1.Cluster {
+	var ready []*clusterv1alpha1.Cluster
+	for _, c := range s.clusters {
+		if util.IsClusterReady(&c.Status) {
+			ready = append(ready, c)
 		}
 	}
+	return ready
+}
 
-	return readyClusterInfoList
+func (s *Snapshot) GetPeerResourceBindings(namespace, key, value string) []string {
+	antiKey := MakeAntiKey(namespace, key, value)
+	return s.affinityGroups[antiKey]
+}
+
+func (s *Snapshot) GetClustersForResourceBinding(rbID string) sets.Set[string] {
+	return s.clustersByRB[rbID]
 }
 
 // GetReadyClusterNames returns the clusterNames in ready status.
 func (s *Snapshot) GetReadyClusterNames() sets.Set[string] {
-	readyClusterNames := sets.New[string]()
-	for _, c := range s.clusterInfoList {
-		if util.IsClusterReady(&c.Cluster().Status) {
-			readyClusterNames.Insert(c.Cluster().Name)
+	names := sets.New[string]()
+	for _, c := range s.clusters {
+		if util.IsClusterReady(&c.Status) {
+			names.Insert(c.Name)
 		}
 	}
 
-	return readyClusterNames
+	return names
 }
 
 // GetCluster returns the given clusters.
-func (s *Snapshot) GetCluster(clusterName string) *framework.ClusterInfo {
-	for _, c := range s.clusterInfoList {
-		if c.Cluster().Name == clusterName {
+func (s *Snapshot) GetCluster(clusterName string) *clusterv1alpha1.Cluster {
+	for _, c := range s.clusters {
+		if c.Name == clusterName {
 			return c
 		}
 	}
