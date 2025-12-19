@@ -22,9 +22,9 @@ import (
 	"io"
 	"strings"
 
-	"gopkg.in/yaml.v3"
 	"k8s.io/cli-runtime/pkg/resource"
 	"k8s.io/kubectl/pkg/cmd/util"
+	"sigs.k8s.io/yaml"
 
 	workv1alpha2 "github.com/karmada-io/karmada/pkg/apis/work/v1alpha2"
 	"github.com/karmada-io/karmada/pkg/karmadactl/util/genericresource"
@@ -167,7 +167,12 @@ func printObjectYaml(w io.Writer, obj interface{}) error {
 		return err
 	}
 
-	encoder := yaml.NewEncoder(w)
-	defer encoder.Close()
-	return encoder.Encode(converted)
+	// sigs.k8s.io/yaml does not provide a streaming Encoder. Marshal to bytes
+	// and write to the provided io.Writer instead.
+	yb, err := yaml.Marshal(converted)
+	if err != nil {
+		return err
+	}
+	_, err = w.Write(yb)
+	return err
 }
