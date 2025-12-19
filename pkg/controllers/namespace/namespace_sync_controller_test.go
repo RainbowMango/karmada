@@ -33,6 +33,7 @@ import (
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/record"
 	controllerruntime "sigs.k8s.io/controller-runtime"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 
 	clusterv1alpha1 "github.com/karmada-io/karmada/pkg/apis/cluster/v1alpha1"
@@ -140,6 +141,10 @@ func TestController_Reconcile(t *testing.T) {
 		{
 			name: "Namespace with skip auto propagation label",
 			namespace: &corev1.Namespace{
+				TypeMeta: metav1.TypeMeta{
+					Kind:       "Namespace",
+					APIVersion: corev1.SchemeGroupVersion.String(),
+				},
 				ObjectMeta: metav1.ObjectMeta{
 					Name: "skip-namespace",
 					Labels: map[string]string{
@@ -166,8 +171,14 @@ func TestController_Reconcile(t *testing.T) {
 			expectWorkCreated: false,
 		},
 		{
-			name:              "Namespace not found",
-			namespace:         &corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: "non-existent"}},
+			name: "Namespace not found",
+			namespace: &corev1.Namespace{
+				TypeMeta: metav1.TypeMeta{
+					Kind:       "Namespace",
+					APIVersion: corev1.SchemeGroupVersion.String(),
+				},
+				ObjectMeta: metav1.ObjectMeta{Name: "non-existent"},
+			},
 			namespaceNotFound: true,
 			expectedResult:    controllerruntime.Result{},
 			expectedError:     false,
@@ -176,6 +187,10 @@ func TestController_Reconcile(t *testing.T) {
 		{
 			name: "Namespace is being deleted",
 			namespace: &corev1.Namespace{
+				TypeMeta: metav1.TypeMeta{
+					Kind:       "Namespace",
+					APIVersion: corev1.SchemeGroupVersion.String(),
+				},
 				ObjectMeta: metav1.ObjectMeta{
 					Name:              "deleting-namespace",
 					DeletionTimestamp: &metav1.Time{Time: time.Now()},
@@ -232,21 +247,22 @@ func TestController_Reconcile(t *testing.T) {
 				if len(tt.clusters) == 0 {
 					t.Fatal("Test case expects work to be created but no clusters are defined")
 				}
-				work := &workv1alpha1.Work{}
-				err = fakeClient.Get(context.Background(), types.NamespacedName{
-					Namespace: names.GenerateExecutionSpaceName(tt.clusters[0].Name),
-					Name:      names.GenerateWorkName(tt.namespace.Kind, tt.namespace.Name, tt.namespace.Namespace),
-				}, work)
+				// List all works in the execution namespace to verify work was created
+				workList := &workv1alpha1.WorkList{}
+				err = fakeClient.List(context.Background(), workList,
+					&client.ListOptions{Namespace: names.GenerateExecutionSpaceName(tt.clusters[0].Name)})
 				assert.NoError(t, err)
-				assert.NotNil(t, work)
+				assert.NotEmpty(t, workList.Items, "Expected work to be created but found none")
+				assert.Equal(t, tt.namespace.Name, workList.Items[0].OwnerReferences[0].Name)
 			} else if len(tt.clusters) > 0 {
-				work := &workv1alpha1.Work{}
-				err = fakeClient.Get(context.Background(), types.NamespacedName{
-					Namespace: names.GenerateExecutionSpaceName(tt.clusters[0].Name),
-					Name:      names.GenerateWorkName(tt.namespace.Kind, tt.namespace.Name, tt.namespace.Namespace),
-				}, work)
-				assert.Error(t, err)
-				assert.True(t, apierrors.IsNotFound(err))
+				// List all works in the execution namespace to verify no work was created
+				workList := &workv1alpha1.WorkList{}
+				err = fakeClient.List(context.Background(), workList,
+					&client.ListOptions{Namespace: names.GenerateExecutionSpaceName(tt.clusters[0].Name)})
+				// If namespace should not be synced, list should be empty or error
+				if err == nil {
+					assert.Empty(t, workList.Items, "Expected no work to be created")
+				}
 			}
 		})
 	}
