@@ -35,12 +35,11 @@ import (
 	"k8s.io/client-go/tools/record"
 	"k8s.io/utils/ptr"
 	controllerruntime "sigs.k8s.io/controller-runtime"
-	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
-	"sigs.k8s.io/controller-runtime/pkg/client/interceptor"
 
 	clusterv1alpha1 "github.com/karmada-io/karmada/pkg/apis/cluster/v1alpha1"
 	workv1alpha1 "github.com/karmada-io/karmada/pkg/apis/work/v1alpha1"
+	ctrltesting "github.com/karmada-io/karmada/pkg/controllers/ctrlutil/testing"
 	"github.com/karmada-io/karmada/pkg/events"
 	"github.com/karmada-io/karmada/pkg/resourceinterpreter"
 	"github.com/karmada-io/karmada/pkg/resourceinterpreter/default/native"
@@ -50,27 +49,6 @@ import (
 	"github.com/karmada-io/karmada/pkg/util/objectwatcher"
 	testhelper "github.com/karmada-io/karmada/test/helper"
 )
-
-// withGVKInterceptor returns an interceptor that sets the GVK on objects after Get operations.
-// This simulates the behavior of real API server clients, which automatically set GVK.
-// The fake client doesn't do this by default (since controller-runtime v0.22.0).
-func withGVKInterceptor(scheme *runtime.Scheme) interceptor.Funcs {
-	return interceptor.Funcs{
-		Get: func(ctx context.Context, c client.WithWatch, key client.ObjectKey, obj client.Object, opts ...client.GetOption) error {
-			if err := c.Get(ctx, key, obj, opts...); err != nil {
-				return err
-			}
-			// Set GVK from scheme if it's empty (mimicking real client behavior)
-			if obj.GetObjectKind().GroupVersionKind().Empty() {
-				gvks, _, _ := scheme.ObjectKinds(obj)
-				if len(gvks) > 0 {
-					obj.GetObjectKind().SetGroupVersionKind(gvks[0])
-				}
-			}
-			return nil
-		},
-	}
-}
 
 type FakeResourceInterpreter struct {
 	*native.DefaultInterpreter
@@ -247,7 +225,7 @@ func newController(work *workv1alpha1.Work, recorder *record.FakeRecorder) Contr
 	restMapper := meta.NewDefaultRESTMapper([]schema.GroupVersion{corev1.SchemeGroupVersion})
 	restMapper.Add(corev1.SchemeGroupVersion.WithKind(pod.Kind), meta.RESTScopeNamespace)
 	clientScheme := gclient.NewSchema()
-	fakeClient := fake.NewClientBuilder().WithScheme(clientScheme).WithObjects(cluster, work).WithStatusSubresource(work).WithRESTMapper(restMapper).WithInterceptorFuncs(withGVKInterceptor(clientScheme)).Build()
+	fakeClient := fake.NewClientBuilder().WithScheme(clientScheme).WithObjects(cluster, work).WithStatusSubresource(work).WithRESTMapper(restMapper).WithInterceptorFuncs(ctrltesting.WithGVKInterceptor(clientScheme)).Build()
 	dynamicClientSet := dynamicfake.NewSimpleDynamicClient(scheme.Scheme, pod)
 	informerManager := genericmanager.GetInstance()
 	informerManager.ForCluster(cluster.Name, dynamicClientSet, 0).Lister(corev1.SchemeGroupVersion.WithResource("pods"))
