@@ -507,7 +507,7 @@ func TestObtainClusterID(t *testing.T) {
 		{
 			name: "namespace not exist",
 			args: args{
-				clusterKubeClient: fake.NewSimpleClientset(),
+				clusterKubeClient: fake.NewClientset(),
 			},
 			want:    "",
 			wantErr: true,
@@ -515,7 +515,7 @@ func TestObtainClusterID(t *testing.T) {
 		{
 			name: "namespace exists",
 			args: args{
-				clusterKubeClient: fake.NewSimpleClientset(&corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: metav1.NamespaceSystem, UID: "123"}}),
+				clusterKubeClient: fake.NewClientset(&corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: metav1.NamespaceSystem, UID: "123"}}),
 			},
 			want:    "123",
 			wantErr: false,

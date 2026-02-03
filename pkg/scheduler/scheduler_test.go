@@ -1208,7 +1208,7 @@ func TestPlacementChanged(t *testing.T) {
 func TestCreateScheduler(t *testing.T) {
 	dynamicClient := dynamicfake.NewSimpleDynamicClient(runtime.NewScheme())
 	karmadaClient := karmadafake.NewSimpleClientset()
-	kubeClient := fake.NewSimpleClientset()
+	kubeClient := fake.NewClientset()
 	port := 10025
 	serviceNamespace := "tenant1"
 	servicePrefix := "test-service-prefix"
