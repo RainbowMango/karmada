@@ -41,7 +41,7 @@ func TestCreateSecret(t *testing.T) {
 		{
 			name: "already exist",
 			args: args{
-				client: fake.NewSimpleClientset(makeSecret("test")),
+				client: fake.NewClientset(makeSecret("test")),
 				secret: makeSecret("test"),
 			},
 			want:    makeSecret("test"),
@@ -59,7 +59,7 @@ func TestCreateSecret(t *testing.T) {
 		{
 			name: "create success",
 			args: args{
-				client: fake.NewSimpleClientset(),
+				client: fake.NewClientset(),
 				secret: makeSecret("test"),
 			},
 			want:    makeSecret("test"),
@@ -146,7 +146,7 @@ func TestPatchSecret(t *testing.T) {
 		{
 			name: "not found error",
 			args: args{
-				client:          fake.NewSimpleClientset(),
+				client:          fake.NewClientset(),
 				namespace:       metav1.NamespaceDefault,
 				name:            "test",
 				pt:              types.MergePatchType,
@@ -157,7 +157,7 @@ func TestPatchSecret(t *testing.T) {
 		{
 			name: "patchType is not supported",
 			args: args{
-				client:          fake.NewSimpleClientset(makeSecret("test")),
+				client:          fake.NewClientset(makeSecret("test")),
 				namespace:       metav1.NamespaceDefault,
 				name:            "test",
 				pt:              "",
@@ -168,7 +168,7 @@ func TestPatchSecret(t *testing.T) {
 		{
 			name: "patch success",
 			args: args{
-				client:          fake.NewSimpleClientset(makeSecret("test")),
+				client:          fake.NewClientset(makeSecret("test")),
 				namespace:       metav1.NamespaceDefault,
 				name:            "test",
 				pt:              types.MergePatchType,

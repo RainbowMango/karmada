@@ -41,7 +41,7 @@ func TestEnsureClusterRoleBindingExist(t *testing.T) {
 		{
 			name: "dry run",
 			args: args{
-				client:             fake.NewSimpleClientset(),
+				client:             fake.NewClientset(),
 				clusterRoleBinding: makeClusterRoleBinding("test"),
 				dryRun:             true,
 			},
@@ -51,7 +51,7 @@ func TestEnsureClusterRoleBindingExist(t *testing.T) {
 		{
 			name: "already exist",
 			args: args{
-				client:             fake.NewSimpleClientset(makeClusterRoleBinding("test")),
+				client:             fake.NewClientset(makeClusterRoleBinding("test")),
 				clusterRoleBinding: makeClusterRoleBinding("test"),
 				dryRun:             false,
 			},
@@ -61,7 +61,7 @@ func TestEnsureClusterRoleBindingExist(t *testing.T) {
 		{
 			name: "not exist",
 			args: args{
-				client:             fake.NewSimpleClientset(),
+				client:             fake.NewClientset(),
 				clusterRoleBinding: makeClusterRoleBinding("test"),
 				dryRun:             false,
 			},
@@ -82,7 +82,7 @@ func TestEnsureClusterRoleBindingExist(t *testing.T) {
 			name: "create error",
 			args: args{
 				client: func() kubernetes.Interface {
-					c := fake.NewSimpleClientset()
+					c := fake.NewClientset()
 					c.PrependReactor("create", "*", errorAction)
 					return c
 				}(),
@@ -122,7 +122,7 @@ func TestEnsureClusterRoleExist(t *testing.T) {
 		{
 			name: "dry run",
 			args: args{
-				client:      fake.NewSimpleClientset(),
+				client:      fake.NewClientset(),
 				clusterRole: makeClusterRole("test"),
 				dryRun:      true,
 			},
@@ -132,7 +132,7 @@ func TestEnsureClusterRoleExist(t *testing.T) {
 		{
 			name: "already exist",
 			args: args{
-				client:      fake.NewSimpleClientset(makeClusterRole("test")),
+				client:      fake.NewClientset(makeClusterRole("test")),
 				clusterRole: makeClusterRole("test"),
 				dryRun:      false,
 			},
@@ -142,7 +142,7 @@ func TestEnsureClusterRoleExist(t *testing.T) {
 		{
 			name: "not exist",
 			args: args{
-				client:      fake.NewSimpleClientset(),
+				client:      fake.NewClientset(),
 				clusterRole: makeClusterRole("test"),
 				dryRun:      false,
 			},
@@ -163,7 +163,7 @@ func TestEnsureClusterRoleExist(t *testing.T) {
 			name: "create error",
 			args: args{
 				client: func() kubernetes.Interface {
-					c := fake.NewSimpleClientset()
+					c := fake.NewClientset()
 					c.PrependReactor("create", "*", errorAction)
 					return c
 				}(),

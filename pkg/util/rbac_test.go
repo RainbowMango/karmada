@@ -39,7 +39,7 @@ func TestCreateClusterRole(t *testing.T) {
 		{
 			name: "already exist",
 			args: args{
-				client:         fake.NewSimpleClientset(makeClusterRole("test")),
+				client:         fake.NewClientset(makeClusterRole("test")),
 				clusterRoleObj: makeClusterRole("test"),
 			},
 			want:    makeClusterRole("test"),
@@ -57,7 +57,7 @@ func TestCreateClusterRole(t *testing.T) {
 		{
 			name: "create success",
 			args: args{
-				client:         fake.NewSimpleClientset(),
+				client:         fake.NewClientset(),
 				clusterRoleObj: makeClusterRole("test"),
 			},
 			want:    makeClusterRole("test"),
@@ -92,7 +92,7 @@ func TestCreateClusterRoleBinding(t *testing.T) {
 		{
 			name: "already exist",
 			args: args{
-				client:                fake.NewSimpleClientset(makeClusterRoleBinding("test")),
+				client:                fake.NewClientset(makeClusterRoleBinding("test")),
 				clusterRoleBindingObj: makeClusterRoleBinding("test"),
 			},
 			want:    makeClusterRoleBinding("test"),
@@ -101,7 +101,7 @@ func TestCreateClusterRoleBinding(t *testing.T) {
 		{
 			name: "create success",
 			args: args{
-				client:                fake.NewSimpleClientset(),
+				client:                fake.NewClientset(),
 				clusterRoleBindingObj: makeClusterRoleBinding("test"),
 			},
 			want:    makeClusterRoleBinding("test"),
@@ -144,7 +144,7 @@ func TestDeleteClusterRole(t *testing.T) {
 		{
 			name: "not found",
 			args: args{
-				client: fake.NewSimpleClientset(),
+				client: fake.NewClientset(),
 				name:   "test",
 			},
 			wantErr: false,
@@ -152,7 +152,7 @@ func TestDeleteClusterRole(t *testing.T) {
 		{
 			name: "existed and deleted",
 			args: args{
-				client: fake.NewSimpleClientset(makeClusterRole("test")),
+				client: fake.NewClientset(makeClusterRole("test")),
 				name:   "test",
 			},
 			wantErr: false,
@@ -188,7 +188,7 @@ func TestDeleteClusterRoleBinding(t *testing.T) {
 		{
 			name: "not found",
 			args: args{
-				client: fake.NewSimpleClientset(),
+				client: fake.NewClientset(),
 				name:   "test",
 			},
 			wantErr: false,
@@ -196,7 +196,7 @@ func TestDeleteClusterRoleBinding(t *testing.T) {
 		{
 			name: "existed and deleted",
 			args: args{
-				client: fake.NewSimpleClientset(makeClusterRoleBinding("test")),
+				client: fake.NewClientset(makeClusterRoleBinding("test")),
 				name:   "test",
 			},
 			wantErr: false,
@@ -295,7 +295,7 @@ func TestIsClusterRoleBindingExist(t *testing.T) {
 		{
 			name: "not found",
 			args: args{
-				client: fake.NewSimpleClientset(),
+				client: fake.NewClientset(),
 				name:   "test",
 			},
 			want:    false,
@@ -304,7 +304,7 @@ func TestIsClusterRoleBindingExist(t *testing.T) {
 		{
 			name: "exist",
 			args: args{
-				client: fake.NewSimpleClientset(makeClusterRoleBinding("test")),
+				client: fake.NewClientset(makeClusterRoleBinding("test")),
 				name:   "test",
 			},
 			want:    true,
@@ -348,7 +348,7 @@ func TestIsClusterRoleExist(t *testing.T) {
 		{
 			name: "not found",
 			args: args{
-				client: fake.NewSimpleClientset(),
+				client: fake.NewClientset(),
 				name:   "test",
 			},
 			want:    false,
@@ -357,7 +357,7 @@ func TestIsClusterRoleExist(t *testing.T) {
 		{
 			name: "exist",
 			args: args{
-				client: fake.NewSimpleClientset(makeClusterRole("test")),
+				client: fake.NewClientset(makeClusterRole("test")),
 				name:   "test",
 			},
 			want:    true,

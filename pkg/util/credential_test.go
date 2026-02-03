@@ -163,7 +163,7 @@ func TestObtainCredentialsFromMemberCluster(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			tt.args.clusterKubeClient = fake.NewSimpleClientset()
+			tt.args.clusterKubeClient = fake.NewClientset()
 			if tt.args.aop != nil {
 				cancel := tt.args.aop(t, tt.args.clusterKubeClient)
 				defer cancel()
@@ -184,7 +184,7 @@ func TestObtainCredentialsFromMemberCluster(t *testing.T) {
 }
 
 func TestRegisterClusterInControllerPlane(t *testing.T) {
-	fakeClient := fake.NewSimpleClientset()
+	fakeClient := fake.NewClientset()
 	type args struct {
 		opts                             ClusterRegisterOption
 		controlPlaneKubeClient           kubernetes.Interface
