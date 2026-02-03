@@ -90,7 +90,7 @@ var (
 func TestIncomingBindingMetrics(t *testing.T) {
 	dynamicClient := dynamicfake.NewSimpleDynamicClient(runtime.NewScheme())
 	karmadaClient := karmadafake.NewSimpleClientset()
-	kubeClient := fake.NewSimpleClientset()
+	kubeClient := fake.NewClientset()
 
 	// enable "PriorityBasedScheduling" feature gate.
 	_ = features.FeatureGate.Set("PriorityBasedScheduling=true")

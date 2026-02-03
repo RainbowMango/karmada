@@ -264,7 +264,7 @@ func buildBinding(name, ns string, target, status []workv1alpha2.TargetCluster) 
 
 func TestNewDescheduler(t *testing.T) {
 	karmadaClient := fakekarmadaclient.NewSimpleClientset()
-	kubeClient := fake.NewSimpleClientset()
+	kubeClient := fake.NewClientset()
 	opts := &options.Options{
 		UnschedulableThreshold: metav1.Duration{Duration: 5 * time.Minute},
 		DeschedulingInterval:   metav1.Duration{Duration: 1 * time.Minute},
@@ -285,7 +285,7 @@ func TestNewDescheduler(t *testing.T) {
 
 func TestRun(t *testing.T) {
 	karmadaClient := fakekarmadaclient.NewSimpleClientset()
-	kubeClient := fake.NewSimpleClientset()
+	kubeClient := fake.NewClientset()
 	opts := &options.Options{
 		UnschedulableThreshold: metav1.Duration{Duration: 5 * time.Minute},
 		DeschedulingInterval:   metav1.Duration{Duration: 1 * time.Minute},
@@ -321,7 +321,7 @@ func TestRun(t *testing.T) {
 
 func TestDescheduleOnce(t *testing.T) {
 	karmadaClient := fakekarmadaclient.NewSimpleClientset()
-	kubeClient := fake.NewSimpleClientset()
+	kubeClient := fake.NewClientset()
 	opts := &options.Options{
 		UnschedulableThreshold: metav1.Duration{Duration: 5 * time.Minute},
 		DeschedulingInterval:   metav1.Duration{Duration: 1 * time.Second},
