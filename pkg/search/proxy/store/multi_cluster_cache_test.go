@@ -423,6 +423,7 @@ func TestMultiClusterCache_Get(t *testing.T) {
 			err = wait.PollUntilContextCancel(tt.args.ctx, 100*time.Millisecond, true,
 				func(_ context.Context) (bool, error) {
 					if checkErr := cache.ReadinessCheck(); checkErr == nil {
+						t.Logf("ReadinessCheck failed: %v/n", checkErr)
 						return true, nil
 					}
 					return false, nil
