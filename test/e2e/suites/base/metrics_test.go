@@ -116,6 +116,7 @@ var _ = ginkgo.Describe("metrics testing", func() {
 						}
 						if !metricExist {
 							klog.Errorf("metric %s not found in component %s", metricName, component)
+							klog.Errorf("Grabbed metrics: %v", podsMetrics)
 							gomega.Expect(metricExist).ShouldNot(gomega.BeFalse())
 						}
 					}
