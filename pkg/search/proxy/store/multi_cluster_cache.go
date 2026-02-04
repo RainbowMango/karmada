@@ -82,7 +82,6 @@ func (c *MultiClusterCache) ReadinessCheck() error {
 
 	var failedChecks []string
 	for cluster, cc := range c.cache {
-		klog.Infof("[JUSTFORDEBUG]Start ReadinessCheck for cluster: %s", cluster)
 		if cc.readinessCheck() != nil {
 			failedChecks = append(failedChecks, cluster)
 		}
