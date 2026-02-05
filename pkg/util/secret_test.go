@@ -73,6 +73,14 @@ func TestCreateSecret(t *testing.T) {
 				t.Errorf("CreateSecret() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
+			if got != nil {
+				// remove fields injected by fake client
+				got.TypeMeta = metav1.TypeMeta{}
+				got.ResourceVersion = ""
+				got.UID = ""
+				got.Generation = 0
+				got.ManagedFields = nil
+			}
 			if !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("CreateSecret() got = %v, want %v", got, tt.want)
 			}

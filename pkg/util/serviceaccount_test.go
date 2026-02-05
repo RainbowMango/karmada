@@ -321,6 +321,14 @@ func TestWaitForServiceAccountSecretCreation(t *testing.T) {
 		t.Error(err)
 		return
 	}
+	if got != nil {
+		// remove fields injected by fake client
+		got.TypeMeta = metav1.TypeMeta{}
+		got.ResourceVersion = ""
+		got.UID = ""
+		got.Generation = 0
+		got.ManagedFields = nil
+	}
 
 	want := &corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
