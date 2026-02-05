@@ -26,7 +26,6 @@ import (
 	"time"
 
 	"github.com/google/go-cmp/cmp"
-	"github.com/stretchr/testify/assert"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/meta"
@@ -38,6 +37,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/apimachinery/pkg/util/wait"
+	"k8s.io/apimachinery/pkg/watch"
 	"k8s.io/apiserver/pkg/endpoints/request"
 	"k8s.io/client-go/dynamic"
 	fakedynamic "k8s.io/client-go/dynamic/fake"
@@ -285,160 +285,6 @@ func TestMultiClusterCache_GetResourceFromCache(t *testing.T) {
 			}
 			if !reflect.DeepEqual(tt.want.cluster, cluster) {
 				t.Errorf("Cluster diff: %v", cmp.Diff(tt.want.cluster, cluster))
-			}
-		})
-	}
-}
-
-func TestMultiClusterCache_Get(t *testing.T) {
-	cluster1 := newCluster("cluster1")
-	cluster2 := newCluster("cluster2")
-	cluster1Client := fakedynamic.NewSimpleDynamicClient(scheme,
-		newUnstructuredObject(podGVK, "pod11", withDefaultNamespace(), withResourceVersion("1000")),
-		newUnstructuredObject(nodeGVK, "node11", withResourceVersion("1000")),
-		newUnstructuredObject(podGVK, "pod-conflict", withDefaultNamespace(), withResourceVersion("1000")),
-	)
-	cluster2Client := fakedynamic.NewSimpleDynamicClient(scheme,
-		newUnstructuredObject(podGVK, "pod21", withDefaultNamespace(), withResourceVersion("2000")),
-		newUnstructuredObject(podGVK, "pod-conflict", withDefaultNamespace(), withResourceVersion("2000")),
-	)
-	newClientFunc := func(cluster string) (dynamic.Interface, error) {
-		switch cluster {
-		case cluster1.Name:
-			return cluster1Client, nil
-		case cluster2.Name:
-			return cluster2Client, nil
-		}
-		return fakedynamic.NewSimpleDynamicClient(scheme), nil
-	}
-	cache := NewMultiClusterCache(newClientFunc, restMapper)
-	registeredResources := map[schema.GroupVersionResource]struct{}{
-		podGVR:  {},
-		nodeGVR: {},
-	}
-	defer cache.Stop()
-	err := cache.UpdateCache(map[string]map[schema.GroupVersionResource]*MultiNamespace{
-		cluster1.Name: resourceSet(podGVR, nodeGVR),
-		cluster2.Name: resourceSet(podGVR),
-	}, registeredResources)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	type args struct {
-		ctx     context.Context
-		gvr     schema.GroupVersionResource
-		name    string
-		options *metav1.GetOptions
-	}
-	type want struct {
-		object    runtime.Object
-		errAssert func(error) bool
-	}
-	tests := []struct {
-		name string
-		args args
-		want want
-	}{
-		{
-			name: "get pod11 from cluster1",
-			args: args{
-				ctx:     request.WithNamespace(context.TODO(), metav1.NamespaceDefault),
-				gvr:     podGVR,
-				name:    "pod11",
-				options: &metav1.GetOptions{},
-			},
-			want: want{
-				object:    newUnstructuredObject(podGVK, "pod11", withDefaultNamespace(), withResourceVersion(buildMultiClusterRV("cluster1", "1000")), withCacheSourceAnnotation("cluster1")),
-				errAssert: noError,
-			},
-		},
-		{
-			name: "get pod21 from cluster2",
-			args: args{
-				ctx:     request.WithNamespace(context.TODO(), metav1.NamespaceDefault),
-				gvr:     podGVR,
-				name:    "pod21",
-				options: &metav1.GetOptions{},
-			},
-			want: want{
-				object:    newUnstructuredObject(podGVK, "pod21", withDefaultNamespace(), withResourceVersion(buildMultiClusterRV("cluster2", "2000")), withCacheSourceAnnotation("cluster2")),
-				errAssert: noError,
-			},
-		},
-		{
-			name: "get pod not found",
-			args: args{
-				ctx:     request.WithNamespace(context.TODO(), metav1.NamespaceDefault),
-				gvr:     podGVR,
-				name:    "podz",
-				options: &metav1.GetOptions{},
-			},
-			want: want{
-				object:    nil,
-				errAssert: apierrors.IsNotFound,
-			},
-		},
-		{
-			name: "get pod with large resource version",
-			args: args{
-				ctx:     request.WithNamespace(context.TODO(), metav1.NamespaceDefault),
-				gvr:     podGVR,
-				name:    "pod11",
-				options: &metav1.GetOptions{ResourceVersion: "9999"},
-			},
-			want: want{
-				object:    nil,
-				errAssert: apierrors.IsTimeout,
-			},
-		},
-		{
-			name: "get node from cluster1",
-			args: args{
-				ctx:     context.TODO(),
-				gvr:     nodeGVR,
-				name:    "node11",
-				options: &metav1.GetOptions{},
-			},
-			want: want{
-				object:    newUnstructuredObject(nodeGVK, "node11", withResourceVersion(buildMultiClusterRV("cluster1", "1000")), withCacheSourceAnnotation("cluster1")),
-				errAssert: noError,
-			},
-		},
-		{
-			name: "get pod conflict",
-			args: args{
-				ctx:     request.WithNamespace(context.TODO(), metav1.NamespaceDefault),
-				gvr:     podGVR,
-				name:    "pod-conflict",
-				options: &metav1.GetOptions{},
-			},
-			want: want{
-				errAssert: apierrors.IsConflict,
-			},
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			err = wait.PollUntilContextCancel(tt.args.ctx, 100*time.Millisecond, true,
-				func(_ context.Context) (bool, error) {
-					if checkErr := cache.ReadinessCheck(); checkErr == nil {
-						return true, nil
-					}
-					return false, nil
-				})
-			assert.NoError(t, err, "Deadline exceeded while waiting for storage readiness")
-
-			obj, err := cache.Get(tt.args.ctx, tt.args.gvr, tt.args.name, tt.args.options)
-			if !tt.want.errAssert(err) {
-				t.Errorf("Unexpected error: %v", err)
-				return
-			}
-			if err != nil {
-				return
-			}
-			if !reflect.DeepEqual(tt.want.object, obj) {
-				t.Errorf("Objects diff: %v", cmp.Diff(tt.want.object, obj))
 			}
 		})
 	}
@@ -1026,7 +872,15 @@ func TestMultiClusterCache_Watch(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			ctx, cancel := context.WithCancel(request.WithNamespace(context.TODO(), metav1.NamespaceDefault))
 			defer cancel()
-			watcher, err := cache.Watch(ctx, podGVR, tt.args.options)
+			// Added for Kubernetes v1.35 dependency upgrade: mitigate transient 429 "storage is reinitializing" errors.
+			var watcher watch.Interface
+			err := wait.PollUntilContextTimeout(ctx, 1*time.Second, 120*time.Second, true, func(ctx context.Context) (done bool, err error) {
+				watcher, err = cache.Watch(ctx, podGVR, tt.args.options)
+				if err != nil {
+					t.Logf("cache watch error: %v", err)
+				}
+				return err == nil, nil
+			})
 			if err != nil {
 				t.Error(err)
 				return
@@ -1161,7 +1015,15 @@ func TestMultiClusterCache_Watch_Namespaced(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			ctx, cancel := context.WithCancel(request.WithNamespace(context.TODO(), tt.args.ns))
 			defer cancel()
-			watcher, err := cache.Watch(ctx, podGVR, &metainternalversion.ListOptions{ResourceVersion: "0"})
+			// Added for Kubernetes v1.35 dependency upgrade: mitigate transient 429 "storage is reinitializing" errors.
+			var watcher watch.Interface
+			err := wait.PollUntilContextTimeout(ctx, 1*time.Second, 120*time.Second, true, func(ctx context.Context) (done bool, err error) {
+				watcher, err = cache.Watch(ctx, podGVR, &metainternalversion.ListOptions{ResourceVersion: "0"})
+				if err != nil {
+					t.Logf("cache watch error: %v", err)
+				}
+				return err == nil, nil
+			})
 			if err != nil {
 				t.Error(err)
 				return

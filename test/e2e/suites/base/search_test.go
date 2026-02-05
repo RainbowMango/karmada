@@ -34,6 +34,7 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/rand"
 	"k8s.io/apimachinery/pkg/util/sets"
+	"k8s.io/apimachinery/pkg/watch"
 	"k8s.io/cli-runtime/pkg/genericclioptions"
 	"k8s.io/client-go/dynamic"
 	"k8s.io/client-go/kubernetes"
@@ -667,15 +668,24 @@ var _ = ginkgo.Describe("[karmada-search] karmada search testing", ginkgo.Ordere
 						g.Expect(listObj.Items).ShouldNot(gomega.BeEmpty())
 					}, pollTimeout, pollInterval).Should(gomega.Succeed())
 
-					watcher, err := proxyClient.CoreV1().Nodes().Watch(context.TODO(), metav1.ListOptions{ResourceVersion: listObj.ResourceVersion})
-					gomega.Expect(err).ShouldNot(gomega.HaveOccurred())
+					// Added for Kubernetes v1.35 dependency upgrade: mitigate transient 429 "storage is reinitializing" errors.
+					var watcher watch.Interface
+					gomega.Eventually(func() error {
+						var watchErr error
+						watcher, watchErr = proxyClient.CoreV1().Nodes().Watch(context.TODO(), metav1.ListOptions{ResourceVersion: listObj.ResourceVersion})
+						if watchErr != nil {
+							klog.Warningf("Failed to watch nodes(will retry): %v", watchErr)
+						}
+						return watchErr
+					}, 120*time.Second, 1*time.Second).Should(gomega.Succeed())
+					gomega.Expect(watcher).ShouldNot(gomega.BeNil())
 					defer watcher.Stop()
 
 					testNode := framework.GetAnyResourceOrFail(m1Dynamic.Resource(nodeGVR))
 
 					anno := "proxy-ann-" + rand.String(RandomStrLength)
 					data := []byte(`{"metadata": {"annotations": {"` + anno + `": "true"}}}`)
-					_, err = m1Client.CoreV1().Nodes().Patch(context.TODO(), testNode.GetName(), types.StrategicMergePatchType, data, metav1.PatchOptions{})
+					_, err := m1Client.CoreV1().Nodes().Patch(context.TODO(), testNode.GetName(), types.StrategicMergePatchType, data, metav1.PatchOptions{})
 					gomega.Expect(err).ShouldNot(gomega.HaveOccurred())
 					defer func() {
 						deleteAnnotationAfterTest(m1Client, testNode.GetName(), anno)
