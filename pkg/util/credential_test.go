@@ -173,6 +173,22 @@ func TestObtainCredentialsFromMemberCluster(t *testing.T) {
 				t.Errorf("ObtainCredentialsFromMemberCluster() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
+			if got != nil {
+				// remove fields injected by fake client
+				got.TypeMeta = metav1.TypeMeta{}
+				got.ResourceVersion = ""
+				got.UID = ""
+				got.Generation = 0
+				got.ManagedFields = nil
+			}
+			if got1 != nil {
+				// remove fields injected by fake client
+				got1.TypeMeta = metav1.TypeMeta{}
+				got1.ResourceVersion = ""
+				got1.UID = ""
+				got1.Generation = 0
+				got1.ManagedFields = nil
+			}
 			if !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("ObtainCredentialsFromMemberCluster() got = %v, want %v", got, tt.want)
 			}
