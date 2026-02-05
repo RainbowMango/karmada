@@ -154,6 +154,14 @@ func TestCreateOrUpdateClusterObject(t *testing.T) {
 				t.Errorf("CreateOrUpdateClusterObject() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
+			if got != nil {
+				// remove fields injected by fake client
+				got.TypeMeta = metav1.TypeMeta{}
+				got.ResourceVersion = ""
+				got.UID = ""
+				got.Generation = 0
+				got.ManagedFields = nil
+			}
 			if !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("CreateOrUpdateClusterObject() got = %v, want %v", got, tt.want)
 			}
@@ -437,6 +445,14 @@ func TestCreateClusterObject(t *testing.T) {
 			if (err != nil) != tt.wantErr {
 				t.Errorf("CreateClusterObject() error = %v, wantErr %v", err, tt.wantErr)
 				return
+			}
+			if got != nil {
+				// remove fields injected by fake client
+				got.TypeMeta = metav1.TypeMeta{}
+				got.ResourceVersion = ""
+				got.UID = ""
+				got.Generation = 0
+				got.ManagedFields = nil
 			}
 			if !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("CreateClusterObject() got = %v, want %v", got, tt.want)
