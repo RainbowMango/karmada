@@ -21,6 +21,7 @@ import (
 	"testing"
 
 	rbacv1 "k8s.io/api/rbac/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/kubernetes/fake"
 )
@@ -70,6 +71,14 @@ func TestCreateClusterRole(t *testing.T) {
 			if (err != nil) != tt.wantErr {
 				t.Errorf("CreateClusterRole() error = %v, wantErr %v", err, tt.wantErr)
 				return
+			}
+			if got != nil {
+				// remove fields injected by fake client
+				got.TypeMeta = metav1.TypeMeta{}
+				got.ResourceVersion = ""
+				got.UID = ""
+				got.Generation = 0
+				got.ManagedFields = nil
 			}
 			if !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("CreateClusterRole() got = %v, want %v", got, tt.want)
@@ -123,6 +132,14 @@ func TestCreateClusterRoleBinding(t *testing.T) {
 			if (err != nil) != tt.wantErr {
 				t.Errorf("CreateClusterRoleBinding() error = %v, wantErr %v", err, tt.wantErr)
 				return
+			}
+			if got != nil {
+				// remove fields injected by fake client
+				got.TypeMeta = metav1.TypeMeta{}
+				got.ResourceVersion = ""
+				got.UID = ""
+				got.Generation = 0
+				got.ManagedFields = nil
 			}
 			if !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("CreateClusterRoleBinding() got = %v, want %v", got, tt.want)
