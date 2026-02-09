@@ -33,7 +33,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/client-go/tools/record"
+	"k8s.io/client-go/tools/events"
 	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
@@ -388,7 +388,7 @@ func TestValidateAndParseSelector(t *testing.T) {
 			controller := &FHPAController{
 				hpaSelectors:    selectors.NewBiMultimap(),
 				hpaSelectorsMux: sync.Mutex{},
-				EventRecorder:   &record.FakeRecorder{},
+				EventRecorder:   &events.FakeRecorder{},
 			}
 
 			hpa := &autoscalingv1alpha1.FederatedHPA{
@@ -771,7 +771,7 @@ func TestGetUnableComputeReplicaCountCondition(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			fakeRecorder := record.NewFakeRecorder(10)
+			fakeRecorder := events.NewFakeRecorder(10)
 			controller := &FHPAController{
 				EventRecorder: fakeRecorder,
 			}

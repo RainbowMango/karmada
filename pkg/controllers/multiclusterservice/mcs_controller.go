@@ -29,7 +29,7 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	utilerrors "k8s.io/apimachinery/pkg/util/errors"
 	"k8s.io/apimachinery/pkg/util/sets"
-	"k8s.io/client-go/tools/record"
+	"k8s.io/client-go/tools/events"
 	"k8s.io/client-go/util/retry"
 	"k8s.io/klog/v2"
 	controllerruntime "sigs.k8s.io/controller-runtime"
@@ -48,7 +48,7 @@ import (
 	workv1alpha1 "github.com/karmada-io/karmada/pkg/apis/work/v1alpha1"
 	workv1alpha2 "github.com/karmada-io/karmada/pkg/apis/work/v1alpha2"
 	"github.com/karmada-io/karmada/pkg/controllers/ctrlutil"
-	"github.com/karmada-io/karmada/pkg/events"
+	kmdevents "github.com/karmada-io/karmada/pkg/events"
 	"github.com/karmada-io/karmada/pkg/sharedcli/ratelimiterflag"
 	"github.com/karmada-io/karmada/pkg/util"
 	"github.com/karmada-io/karmada/pkg/util/helper"
@@ -61,7 +61,7 @@ const ControllerName = "multiclusterservice-controller"
 // MCSController is to sync MultiClusterService.
 type MCSController struct {
 	client.Client
-	EventRecorder      record.EventRecorder
+	EventRecorder      events.EventRecorder
 	RateLimiterOptions ratelimiterflag.Options
 }
 
@@ -89,11 +89,11 @@ func (c *MCSController) Reconcile(ctx context.Context, req controllerruntime.Req
 	defer func() {
 		if err != nil {
 			_ = c.updateMultiClusterServiceStatus(ctx, mcs, metav1.ConditionFalse, "ServiceAppliedFailed", err.Error())
-			c.EventRecorder.Eventf(mcs, corev1.EventTypeWarning, events.EventReasonSyncServiceFailed, err.Error())
+			c.EventRecorder.Eventf(mcs, nil, corev1.EventTypeWarning, kmdevents.EventReasonSyncServiceFailed, "", err.Error())
 			return
 		}
 		_ = c.updateMultiClusterServiceStatus(ctx, mcs, metav1.ConditionTrue, "ServiceAppliedSucceed", "Service is propagated to target clusters.")
-		c.EventRecorder.Eventf(mcs, corev1.EventTypeNormal, events.EventReasonSyncServiceSucceed, "Service is propagated to target clusters.")
+		c.EventRecorder.Eventf(mcs, nil, corev1.EventTypeNormal, kmdevents.EventReasonSyncServiceSucceed, "", "Service is propagated to target clusters.")
 	}()
 
 	if err = c.handleMultiClusterServiceCreateOrUpdate(ctx, mcs.DeepCopy()); err != nil {
@@ -106,14 +106,12 @@ func (c *MCSController) handleMultiClusterServiceDelete(ctx context.Context, mcs
 	klog.V(4).InfoS("Begin to handle MultiClusterService delete event", "namespace", mcs.Namespace, "name", mcs.Name)
 
 	if err := c.retrieveService(ctx, mcs); err != nil {
-		c.EventRecorder.Event(mcs, corev1.EventTypeWarning, events.EventReasonSyncServiceFailed,
-			fmt.Sprintf("failed to delete service work :%v", err))
+		c.EventRecorder.Eventf(mcs, nil, corev1.EventTypeWarning, kmdevents.EventReasonSyncServiceFailed, "", fmt.Sprintf("failed to delete service work :%v", err))
 		return controllerruntime.Result{}, err
 	}
 
 	if err := c.retrieveMultiClusterService(ctx, mcs, nil); err != nil {
-		c.EventRecorder.Event(mcs, corev1.EventTypeWarning, events.EventReasonSyncServiceFailed,
-			fmt.Sprintf("failed to delete MultiClusterService work :%v", err))
+		c.EventRecorder.Eventf(mcs, nil, corev1.EventTypeWarning, kmdevents.EventReasonSyncServiceFailed, "", fmt.Sprintf("failed to delete MultiClusterService work :%v", err))
 		return controllerruntime.Result{}, err
 	}
 
@@ -277,20 +275,19 @@ func (c *MCSController) propagateMultiClusterService(ctx context.Context, mcs *n
 		clusterObj, err := util.GetCluster(c.Client, clusterName)
 		if err != nil {
 			if apierrors.IsNotFound(err) {
-				c.EventRecorder.Eventf(mcs, corev1.EventTypeWarning, events.EventReasonClusterNotFound, "Provider cluster %s is not found", clusterName)
+				c.EventRecorder.Eventf(mcs, nil, corev1.EventTypeWarning, kmdevents.EventReasonClusterNotFound, "", "Provider cluster %s is not found", clusterName)
 				continue
 			}
 			klog.ErrorS(err, "Failed to get cluster", "cluster", clusterName)
 			return err
 		}
 		if !util.IsClusterReady(&clusterObj.Status) {
-			c.EventRecorder.Eventf(mcs, corev1.EventTypeWarning, events.EventReasonSyncServiceFailed,
-				"Provider cluster %s is not ready, skip to propagate MultiClusterService", clusterName)
+			c.EventRecorder.Eventf(mcs, nil, corev1.EventTypeWarning, kmdevents.EventReasonSyncServiceFailed, "", "Provider cluster %s is not ready, skip to propagate MultiClusterService", clusterName)
 			continue
 		}
 
 		if clusterObj.APIEnablement(util.EndpointSliceGVK) == clusterv1alpha1.APIDisabled {
-			c.EventRecorder.Eventf(mcs, corev1.EventTypeWarning, events.EventReasonAPIIncompatible, "Provider cluster %s does not support EndpointSlice", clusterName)
+			c.EventRecorder.Eventf(mcs, nil, corev1.EventTypeWarning, kmdevents.EventReasonAPIIncompatible, "", "Provider cluster %s does not support EndpointSlice", clusterName)
 			continue
 		}
 

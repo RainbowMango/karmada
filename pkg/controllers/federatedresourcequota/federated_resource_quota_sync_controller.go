@@ -25,7 +25,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/errors"
-	"k8s.io/client-go/tools/record"
+	"k8s.io/client-go/tools/events"
 	"k8s.io/klog/v2"
 	controllerruntime "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/builder"
@@ -40,7 +40,7 @@ import (
 	policyv1alpha1 "github.com/karmada-io/karmada/pkg/apis/policy/v1alpha1"
 	workv1alpha1 "github.com/karmada-io/karmada/pkg/apis/work/v1alpha1"
 	"github.com/karmada-io/karmada/pkg/controllers/ctrlutil"
-	"github.com/karmada-io/karmada/pkg/events"
+	kmdevents "github.com/karmada-io/karmada/pkg/events"
 	"github.com/karmada-io/karmada/pkg/sharedcli/ratelimiterflag"
 	"github.com/karmada-io/karmada/pkg/util"
 	"github.com/karmada-io/karmada/pkg/util/helper"
@@ -55,7 +55,7 @@ const (
 // SyncController is to sync FederatedResourceQuota.
 type SyncController struct {
 	client.Client      // used to operate Work resources.
-	EventRecorder      record.EventRecorder
+	EventRecorder      events.EventRecorder
 	RateLimiterOptions ratelimiterflag.Options
 }
 
@@ -91,10 +91,10 @@ func (c *SyncController) Reconcile(ctx context.Context, req controllerruntime.Re
 
 	if err := c.buildWorks(ctx, quota, clusterList.Items); err != nil {
 		klog.ErrorS(err, "Failed to build works for federatedResourceQuota", "namespacedName", req.NamespacedName.String())
-		c.EventRecorder.Eventf(quota, corev1.EventTypeWarning, events.EventReasonSyncFederatedResourceQuotaFailed, err.Error())
+		c.EventRecorder.Eventf(quota, nil, corev1.EventTypeWarning, kmdevents.EventReasonSyncFederatedResourceQuotaFailed, "", err.Error())
 		return controllerruntime.Result{}, err
 	}
-	c.EventRecorder.Eventf(quota, corev1.EventTypeNormal, events.EventReasonSyncFederatedResourceQuotaSucceed, "Sync works for FederatedResourceQuota(%s) succeed.", req.NamespacedName.String())
+	c.EventRecorder.Eventf(quota, nil, corev1.EventTypeNormal, kmdevents.EventReasonSyncFederatedResourceQuotaSucceed, "", "Sync works for FederatedResourceQuota(%s) succeed.", req.NamespacedName.String())
 
 	return controllerruntime.Result{}, nil
 }

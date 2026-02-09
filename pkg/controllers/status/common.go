@@ -27,7 +27,7 @@ import (
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/client-go/dynamic"
-	"k8s.io/client-go/tools/record"
+	"k8s.io/client-go/tools/events"
 	"k8s.io/client-go/util/retry"
 	"k8s.io/klog/v2"
 	"sigs.k8s.io/controller-runtime/pkg/builder"
@@ -37,7 +37,7 @@ import (
 	configv1alpha1 "github.com/karmada-io/karmada/pkg/apis/config/v1alpha1"
 	workv1alpha1 "github.com/karmada-io/karmada/pkg/apis/work/v1alpha1"
 	workv1alpha2 "github.com/karmada-io/karmada/pkg/apis/work/v1alpha2"
-	"github.com/karmada-io/karmada/pkg/events"
+	kmdevents "github.com/karmada-io/karmada/pkg/events"
 	"github.com/karmada-io/karmada/pkg/resourceinterpreter"
 	"github.com/karmada-io/karmada/pkg/util/restmapper"
 )
@@ -145,15 +145,7 @@ var workPredicateFn = builder.WithPredicates(predicate.Funcs{
 
 // updateResourceStatus will try to calculate the summary status and
 // update to original object that the ResourceBinding refer to.
-func updateResourceStatus(
-	ctx context.Context,
-	dynamicClient dynamic.Interface,
-	restMapper meta.RESTMapper,
-	interpreter resourceinterpreter.ResourceInterpreter,
-	eventRecorder record.EventRecorder,
-	objRef workv1alpha2.ObjectReference,
-	bindingStatus workv1alpha2.ResourceBindingStatus,
-) error {
+func updateResourceStatus(ctx context.Context, dynamicClient dynamic.Interface, restMapper meta.RESTMapper, interpreter resourceinterpreter.ResourceInterpreter, eventRecorder events.EventRecorder, objRef workv1alpha2.ObjectReference, bindingStatus workv1alpha2.ResourceBindingStatus) error {
 	gvr, err := restmapper.GetGroupVersionResource(restMapper, schema.FromAPIVersionAndKind(objRef.APIVersion, objRef.Kind))
 	if err != nil {
 		klog.Errorf("Failed to get GVR from GVK(%s/%s), Error: %v", objRef.APIVersion, objRef.Kind, err)
@@ -201,13 +193,13 @@ func updateResourceStatus(
 			return err
 		}
 
-		eventRecorder.Event(resource, corev1.EventTypeNormal, events.EventReasonAggregateStatusSucceed, "Update Resource with AggregatedStatus successfully.")
+		eventRecorder.Eventf(resource, nil, corev1.EventTypeNormal, kmdevents.EventReasonAggregateStatusSucceed, "", "Update Resource with AggregatedStatus successfully.")
 		klog.V(3).Infof("Update resource(%s/%s/%s) status successfully.", gvr, resource.GetNamespace(), resource.GetName())
 
 		return nil
 	}); err != nil {
 		if resource != nil {
-			eventRecorder.Event(resource, corev1.EventTypeWarning, events.EventReasonAggregateStatusFailed, err.Error())
+			eventRecorder.Eventf(resource, nil, corev1.EventTypeWarning, kmdevents.EventReasonAggregateStatusFailed, "", err.Error())
 		}
 		return err
 	}

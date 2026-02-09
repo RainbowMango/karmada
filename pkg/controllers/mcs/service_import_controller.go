@@ -23,7 +23,7 @@ import (
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/client-go/tools/record"
+	"k8s.io/client-go/tools/events"
 	"k8s.io/client-go/util/retry"
 	"k8s.io/klog/v2"
 	controllerruntime "sigs.k8s.io/controller-runtime"
@@ -31,7 +31,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 	mcsv1alpha1 "sigs.k8s.io/mcs-api/pkg/apis/v1alpha1"
 
-	"github.com/karmada-io/karmada/pkg/events"
+	kmdevents "github.com/karmada-io/karmada/pkg/events"
 	"github.com/karmada-io/karmada/pkg/sharedcli/ratelimiterflag"
 	"github.com/karmada-io/karmada/pkg/util/helper"
 	"github.com/karmada-io/karmada/pkg/util/names"
@@ -43,7 +43,7 @@ const ServiceImportControllerName = "service-import-controller"
 // ServiceImportController is to sync derived service from ServiceImport.
 type ServiceImportController struct {
 	client.Client
-	EventRecorder      record.EventRecorder
+	EventRecorder      events.EventRecorder
 	RateLimiterOptions ratelimiterflag.Options
 }
 
@@ -65,10 +65,10 @@ func (c *ServiceImportController) Reconcile(ctx context.Context, req controllerr
 	}
 
 	if err := c.deriveServiceFromServiceImport(ctx, svcImport); err != nil {
-		c.EventRecorder.Eventf(svcImport, corev1.EventTypeWarning, events.EventReasonSyncDerivedServiceFailed, err.Error())
+		c.EventRecorder.Eventf(svcImport, nil, corev1.EventTypeWarning, kmdevents.EventReasonSyncDerivedServiceFailed, "", err.Error())
 		return controllerruntime.Result{}, err
 	}
-	c.EventRecorder.Eventf(svcImport, corev1.EventTypeNormal, events.EventReasonSyncDerivedServiceSucceed, "Sync derived service for serviceImport(%s) succeed.", svcImport.Name)
+	c.EventRecorder.Eventf(svcImport, nil, corev1.EventTypeNormal, kmdevents.EventReasonSyncDerivedServiceSucceed, "", "Sync derived service for serviceImport(%s) succeed.", svcImport.Name)
 	return controllerruntime.Result{}, nil
 }
 

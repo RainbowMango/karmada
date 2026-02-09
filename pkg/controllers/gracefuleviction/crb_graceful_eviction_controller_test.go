@@ -27,7 +27,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/client-go/tools/record"
+	"k8s.io/client-go/tools/events"
 	controllerruntime "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
@@ -123,7 +123,7 @@ func TestCRBGracefulEvictionController_Reconcile(t *testing.T) {
 			}
 			c := &CRBGracefulEvictionController{
 				Client:                  client,
-				EventRecorder:           record.NewFakeRecorder(10),
+				EventRecorder:           events.NewFakeRecorder(10),
 				RateLimiterOptions:      ratelimiterflag.Options{},
 				GracefulEvictionTimeout: 5 * time.Minute,
 			}
@@ -267,7 +267,7 @@ func TestCRBGracefulEvictionController_syncBinding(t *testing.T) {
 			client := fake.NewClientBuilder().WithScheme(s).WithObjects(tt.binding).Build()
 			c := &CRBGracefulEvictionController{
 				Client:                  client,
-				EventRecorder:           record.NewFakeRecorder(10),
+				EventRecorder:           events.NewFakeRecorder(10),
 				GracefulEvictionTimeout: timeout,
 			}
 

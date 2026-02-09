@@ -30,7 +30,7 @@ import (
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/util/sets"
-	"k8s.io/client-go/tools/record"
+	"k8s.io/client-go/tools/events"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 
@@ -209,7 +209,7 @@ func TestAggregateResourceBindingWorkStatus(t *testing.T) {
 				WithStatusSubresource(tt.binding).
 				Build()
 
-			recorder := record.NewFakeRecorder(10)
+			recorder := events.NewFakeRecorder(10)
 
 			err := AggregateResourceBindingWorkStatus(context.TODO(), c, tt.binding, recorder)
 			if tt.expectedError {
@@ -406,7 +406,7 @@ func TestAggregateClusterResourceBindingWorkStatus(t *testing.T) {
 				WithStatusSubresource(tt.binding).
 				Build()
 
-			recorder := record.NewFakeRecorder(10)
+			recorder := events.NewFakeRecorder(10)
 
 			err := AggregateClusterResourceBindingWorkStatus(context.TODO(), c, tt.binding, recorder)
 			if tt.expectedError {

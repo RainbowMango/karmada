@@ -127,6 +127,6 @@ func (d *DependenciesDistributor) recordEventIfPolicyConflict(existBinding *work
 
 	if len(conflictReasons) > 0 {
 		message := "Dependency policy conflict detected: %s."
-		d.EventRecorder.Eventf(existBinding, corev1.EventTypeWarning, events.EventReasonDependencyPolicyConflict, message, strings.Join(conflictReasons, "; "))
+		d.EventRecorder.Eventf(existBinding, nil, corev1.EventTypeWarning, events.EventReasonDependencyPolicyConflict, "", message, strings.Join(conflictReasons, "; "))
 	}
 }

@@ -25,7 +25,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/sets"
-	"k8s.io/client-go/tools/record"
+	"k8s.io/client-go/tools/events"
 	"k8s.io/klog/v2"
 	controllerruntime "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/builder"
@@ -47,7 +47,7 @@ const RBApplicationFailoverControllerName = "resource-binding-application-failov
 // RBApplicationFailoverController is to sync ResourceBinding's application failover behavior.
 type RBApplicationFailoverController struct {
 	client.Client
-	EventRecorder      record.EventRecorder
+	EventRecorder      events.EventRecorder
 	RateLimiterOptions ratelimiterflag.Options
 
 	// workloadUnhealthyMap records which clusters the specific resource is in an unhealthy state

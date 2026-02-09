@@ -24,7 +24,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/labels"
-	"k8s.io/client-go/tools/record"
+	"k8s.io/client-go/tools/events"
 	"k8s.io/klog/v2"
 	controllerruntime "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/builder"
@@ -48,7 +48,7 @@ const EndpointSliceControllerName = "endpointslice-controller"
 // EndpointSliceController is to collect EndpointSlice which reported by member cluster from executionNamespace to serviceexport namespace.
 type EndpointSliceController struct {
 	client.Client
-	EventRecorder      record.EventRecorder
+	EventRecorder      events.EventRecorder
 	RateLimiterOptions ratelimiterflag.Options
 }
 

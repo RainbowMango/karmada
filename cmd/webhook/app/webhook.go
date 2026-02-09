@@ -229,7 +229,7 @@ func Run(ctx context.Context, opts *options.Options) error {
 
 	// others
 	hookServer.Register("/validate-resourcedeletionprotection", &webhook.Admission{Handler: &resourcedeletionprotection.ValidatingAdmission{Decoder: decoder}})
-	hookServer.Register("/convert", conversion.NewWebhookHandler(hookManager.GetScheme()))
+	hookServer.Register("/convert", conversion.NewWebhookHandler(hookManager.GetScheme(), hookManager.GetConverterRegistry()))
 	hookServer.WebhookMux().Handle("/readyz/", http.StripPrefix("/readyz/", &healthz.Handler{}))
 
 	ctrlmetrics.Registry.MustRegister(versionmetrics.NewBuildInfoCollector())

@@ -28,7 +28,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/client-go/tools/record"
+	"k8s.io/client-go/tools/events"
 	"k8s.io/client-go/util/retry"
 	"k8s.io/klog/v2"
 	controllerruntime "sigs.k8s.io/controller-runtime"
@@ -42,7 +42,7 @@ import (
 
 	policyv1alpha1 "github.com/karmada-io/karmada/pkg/apis/policy/v1alpha1"
 	workv1alpha1 "github.com/karmada-io/karmada/pkg/apis/work/v1alpha1"
-	"github.com/karmada-io/karmada/pkg/events"
+	kmdevents "github.com/karmada-io/karmada/pkg/events"
 	"github.com/karmada-io/karmada/pkg/features"
 	"github.com/karmada-io/karmada/pkg/sharedcli/ratelimiterflag"
 	"github.com/karmada-io/karmada/pkg/util"
@@ -58,7 +58,7 @@ const (
 // StatusController is to collect status from work to FederatedResourceQuota.
 type StatusController struct {
 	client.Client      // used to operate Work resources.
-	EventRecorder      record.EventRecorder
+	EventRecorder      events.EventRecorder
 	RateLimiterOptions ratelimiterflag.Options
 }
 
@@ -83,10 +83,10 @@ func (c *StatusController) Reconcile(ctx context.Context, req controllerruntime.
 
 	if err := c.collectQuotaStatus(ctx, quota); err != nil {
 		klog.ErrorS(err, "Failed to collect status from works to federatedResourceQuota", "federatedResourceQuota", req.NamespacedName.String())
-		c.EventRecorder.Eventf(quota, corev1.EventTypeWarning, events.EventReasonCollectFederatedResourceQuotaStatusFailed, err.Error())
+		c.EventRecorder.Eventf(quota, nil, corev1.EventTypeWarning, kmdevents.EventReasonCollectFederatedResourceQuotaStatusFailed, "", err.Error())
 		return controllerruntime.Result{}, err
 	}
-	c.EventRecorder.Eventf(quota, corev1.EventTypeNormal, events.EventReasonCollectFederatedResourceQuotaStatusSucceed, "Collect status of FederatedResourceQuota(%s) succeed.", req.NamespacedName.String())
+	c.EventRecorder.Eventf(quota, nil, corev1.EventTypeNormal, kmdevents.EventReasonCollectFederatedResourceQuotaStatusSucceed, "", "Collect status of FederatedResourceQuota(%s) succeed.", req.NamespacedName.String())
 	return controllerruntime.Result{}, nil
 }
 

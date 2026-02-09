@@ -27,7 +27,7 @@ import (
 	"k8s.io/apimachinery/pkg/api/meta"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/dynamic"
-	"k8s.io/client-go/tools/record"
+	"k8s.io/client-go/tools/events"
 	"k8s.io/klog/v2"
 	"k8s.io/utils/ptr"
 	controllerruntime "sigs.k8s.io/controller-runtime"
@@ -40,7 +40,7 @@ import (
 
 	policyv1alpha1 "github.com/karmada-io/karmada/pkg/apis/policy/v1alpha1"
 	workv1alpha2 "github.com/karmada-io/karmada/pkg/apis/work/v1alpha2"
-	"github.com/karmada-io/karmada/pkg/events"
+	kmdevents "github.com/karmada-io/karmada/pkg/events"
 	"github.com/karmada-io/karmada/pkg/metrics"
 	"github.com/karmada-io/karmada/pkg/resourceinterpreter"
 	"github.com/karmada-io/karmada/pkg/sharedcli/ratelimiterflag"
@@ -58,7 +58,7 @@ type ResourceBindingController struct {
 	client.Client                                                   // used to operate ClusterResourceBinding resources.
 	DynamicClient       dynamic.Interface                           // used to fetch arbitrary resources from api server.
 	InformerManager     genericmanager.SingleClusterInformerManager // used to fetch arbitrary resources from cache.
-	EventRecorder       record.EventRecorder
+	EventRecorder       events.EventRecorder
 	RESTMapper          meta.RESTMapper
 	OverrideManager     overridemanager.OverrideManager
 	ResourceInterpreter resourceinterpreter.ResourceInterpreter
@@ -140,15 +140,15 @@ func (c *ResourceBindingController) syncBinding(ctx context.Context, binding *wo
 	metrics.ObserveSyncWorkLatency(err, start)
 	if err != nil {
 		klog.ErrorS(err, "Failed to transform ResourceBinding to works", "namespace", binding.GetNamespace(), "binding", binding.GetName())
-		c.EventRecorder.Event(binding, corev1.EventTypeWarning, events.EventReasonSyncWorkFailed, err.Error())
-		c.EventRecorder.Event(workload, corev1.EventTypeWarning, events.EventReasonSyncWorkFailed, err.Error())
+		c.EventRecorder.Eventf(binding, nil, corev1.EventTypeWarning, kmdevents.EventReasonSyncWorkFailed, "", err.Error())
+		c.EventRecorder.Eventf(workload, nil, corev1.EventTypeWarning, kmdevents.EventReasonSyncWorkFailed, "", err.Error())
 		return controllerruntime.Result{}, err
 	}
 
 	msg := fmt.Sprintf("Sync work of ResourceBinding(%s/%s) successful.", binding.Namespace, binding.Name)
 	klog.V(4).InfoS(msg, "namespace", binding.GetNamespace(), "binding", binding.GetName())
-	c.EventRecorder.Event(binding, corev1.EventTypeNormal, events.EventReasonSyncWorkSucceed, msg)
-	c.EventRecorder.Event(workload, corev1.EventTypeNormal, events.EventReasonSyncWorkSucceed, msg)
+	c.EventRecorder.Eventf(binding, nil, corev1.EventTypeNormal, kmdevents.EventReasonSyncWorkSucceed, "", msg)
+	c.EventRecorder.Eventf(workload, nil, corev1.EventTypeNormal, kmdevents.EventReasonSyncWorkSucceed, "", msg)
 	return controllerruntime.Result{}, nil
 }
 
@@ -157,14 +157,14 @@ func (c *ResourceBindingController) removeOrphanWorks(ctx context.Context, bindi
 		binding.Labels[workv1alpha2.ResourceBindingPermanentIDLabel], helper.ObtainBindingSpecExistingClusters(binding.Spec))
 	if err != nil {
 		klog.ErrorS(err, "Failed to find orphaned works by ResourceBinding", "namespace", binding.GetNamespace(), "binding", binding.GetName())
-		c.EventRecorder.Event(binding, corev1.EventTypeWarning, events.EventReasonCleanupWorkFailed, err.Error())
+		c.EventRecorder.Eventf(binding, nil, corev1.EventTypeWarning, kmdevents.EventReasonCleanupWorkFailed, "", err.Error())
 		return err
 	}
 
 	err = helper.RemoveOrphanWorks(ctx, c.Client, works)
 	if err != nil {
 		klog.ErrorS(err, "Failed to remove orphaned works by ResourceBinding", "namespace", binding.GetNamespace(), "binding", binding.GetName())
-		c.EventRecorder.Event(binding, corev1.EventTypeWarning, events.EventReasonCleanupWorkFailed, err.Error())
+		c.EventRecorder.Eventf(binding, nil, corev1.EventTypeWarning, kmdevents.EventReasonCleanupWorkFailed, "", err.Error())
 		return err
 	}
 

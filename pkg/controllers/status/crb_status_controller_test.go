@@ -29,7 +29,7 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	dynamicfake "k8s.io/client-go/dynamic/fake"
 	"k8s.io/client-go/kubernetes/scheme"
-	"k8s.io/client-go/tools/record"
+	"k8s.io/client-go/tools/events"
 	controllerruntime "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 
@@ -64,7 +64,7 @@ func generateCRBStatusController() *CRBStatusController {
 			m.Add(corev1.SchemeGroupVersion.WithKind("Namespace"), meta.RESTScopeNamespace)
 			return m
 		}(),
-		EventRecorder: &record.FakeRecorder{},
+		EventRecorder: &events.FakeRecorder{},
 	}
 	return c
 }

@@ -28,7 +28,7 @@ import (
 	"github.com/go-openapi/jsonpointer"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
-	"k8s.io/client-go/tools/record"
+	"k8s.io/client-go/tools/events"
 	"k8s.io/klog/v2"
 	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -36,7 +36,7 @@ import (
 
 	clusterv1alpha1 "github.com/karmada-io/karmada/pkg/apis/cluster/v1alpha1"
 	policyv1alpha1 "github.com/karmada-io/karmada/pkg/apis/policy/v1alpha1"
-	"github.com/karmada-io/karmada/pkg/events"
+	kmdevents "github.com/karmada-io/karmada/pkg/events"
 	"github.com/karmada-io/karmada/pkg/util"
 )
 
@@ -81,11 +81,11 @@ type policyOverriders struct {
 
 type overrideManagerImpl struct {
 	client.Client
-	record.EventRecorder
+	events.EventRecorder
 }
 
 // New builds an OverrideManager instance.
-func New(client client.Client, eventRecorder record.EventRecorder) OverrideManager {
+func New(client client.Client, eventRecorder events.EventRecorder) OverrideManager {
 	return &overrideManagerImpl{
 		Client:        client,
 		EventRecorder: eventRecorder,
@@ -151,11 +151,11 @@ func (o *overrideManagerImpl) applyClusterOverrides(rawObj *unstructured.Unstruc
 	for _, p := range matchingPolicyOverriders {
 		if err := applyPolicyOverriders(rawObj, p.overriders); err != nil {
 			klog.Errorf("Failed to apply cluster overrides(%s) for resource(%s/%s), error: %v", p.name, rawObj.GetNamespace(), rawObj.GetName(), err)
-			o.EventRecorder.Eventf(rawObj, corev1.EventTypeWarning, events.EventReasonApplyOverridePolicyFailed, "Apply cluster override policy(%s) for cluster(%s) failed.", p.name, cluster.Name)
+			o.EventRecorder.Eventf(rawObj, nil, corev1.EventTypeWarning, kmdevents.EventReasonApplyOverridePolicyFailed, "", "Apply cluster override policy(%s) for cluster(%s) failed.", p.name, cluster.Name)
 			return nil, err
 		}
 		klog.V(2).Infof("Applied cluster overrides(%s) for resource(%s/%s)", p.name, rawObj.GetNamespace(), rawObj.GetName())
-		o.EventRecorder.Eventf(rawObj, corev1.EventTypeNormal, events.EventReasonApplyOverridePolicySucceed, "Apply cluster override policy(%s) for cluster(%s) succeed.", p.name, cluster.Name)
+		o.EventRecorder.Eventf(rawObj, nil, corev1.EventTypeNormal, kmdevents.EventReasonApplyOverridePolicySucceed, "", "Apply cluster override policy(%s) for cluster(%s) succeed.", p.name, cluster.Name)
 		appliedList.Add(p.name, p.overriders)
 	}
 
@@ -189,11 +189,11 @@ func (o *overrideManagerImpl) applyNamespacedOverrides(rawObj *unstructured.Unst
 	for _, p := range matchingPolicyOverriders {
 		if err := applyPolicyOverriders(rawObj, p.overriders); err != nil {
 			klog.Errorf("Failed to apply overrides(%s/%s) for resource(%s/%s), error: %v", p.namespace, p.name, rawObj.GetNamespace(), rawObj.GetName(), err)
-			o.EventRecorder.Eventf(rawObj, corev1.EventTypeWarning, events.EventReasonApplyOverridePolicyFailed, "Apply override policy(%s/%s) for cluster(%s) failed.", p.namespace, p.name, cluster.Name)
+			o.EventRecorder.Eventf(rawObj, nil, corev1.EventTypeWarning, kmdevents.EventReasonApplyOverridePolicyFailed, "", "Apply override policy(%s/%s) for cluster(%s) failed.", p.namespace, p.name, cluster.Name)
 			return nil, err
 		}
 		klog.V(2).Infof("Applied overrides(%s/%s) for resource(%s/%s)", p.namespace, p.name, rawObj.GetNamespace(), rawObj.GetName())
-		o.EventRecorder.Eventf(rawObj, corev1.EventTypeNormal, events.EventReasonApplyOverridePolicySucceed, "Apply override policy(%s/%s) for cluster(%s) succeed.", p.namespace, p.name, cluster.Name)
+		o.EventRecorder.Eventf(rawObj, nil, corev1.EventTypeNormal, kmdevents.EventReasonApplyOverridePolicySucceed, "", "Apply override policy(%s/%s) for cluster(%s) succeed.", p.namespace, p.name, cluster.Name)
 		appliedList.Add(p.name, p.overriders)
 	}
 

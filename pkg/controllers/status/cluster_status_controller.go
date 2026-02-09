@@ -34,7 +34,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	clientset "k8s.io/client-go/kubernetes"
 	v1 "k8s.io/client-go/listers/core/v1"
-	"k8s.io/client-go/tools/record"
+	"k8s.io/client-go/tools/events"
 	"k8s.io/client-go/util/retry"
 	"k8s.io/component-helpers/apimachinery/lease"
 	"k8s.io/klog/v2"
@@ -82,7 +82,7 @@ var (
 type ClusterStatusController struct {
 	client.Client               // used to operate Cluster resources.
 	KubeClient                  clientset.Interface
-	EventRecorder               record.EventRecorder
+	EventRecorder               events.EventRecorder
 	PredicateFunc               predicate.Predicate
 	TypedInformerManager        typedmanager.MultiClusterInformerManager
 	GenericInformerManager      genericmanager.MultiClusterInformerManager

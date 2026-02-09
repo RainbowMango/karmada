@@ -31,7 +31,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/rest"
-	"k8s.io/client-go/tools/record"
+	"k8s.io/client-go/tools/events"
 	controllerruntime "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
@@ -223,7 +223,7 @@ func TestController_Reconcile(t *testing.T) {
 			fakeClientBuilder = fakeClientBuilder.WithLists(&clusterv1alpha1.ClusterList{Items: tt.clusters})
 			fakeClientBuilder = fakeClientBuilder.WithInterceptorFuncs(withGVKInterceptor(scheme))
 			fakeClient := fakeClientBuilder.Build()
-			fakeRecorder := record.NewFakeRecorder(100)
+			fakeRecorder := events.NewFakeRecorder(100)
 
 			c := &Controller{
 				Client:          fakeClient,
@@ -372,7 +372,7 @@ func TestController_buildWorks(t *testing.T) {
 				fakeClientBuilder = fakeClientBuilder.WithObjects(overridePolicy)
 			}
 			fakeClient := fakeClientBuilder.Build()
-			fakeRecorder := record.NewFakeRecorder(100)
+			fakeRecorder := events.NewFakeRecorder(100)
 
 			c := &Controller{
 				Client:          fakeClient,
@@ -441,8 +441,8 @@ func TestController_SetupWithManager(t *testing.T) {
 
 			c := &Controller{
 				Client:          mgr.GetClient(),
-				EventRecorder:   mgr.GetEventRecorderFor("test-controller"),
-				OverrideManager: overridemanager.New(mgr.GetClient(), mgr.GetEventRecorderFor("test-controller")),
+				EventRecorder:   mgr.GetEventRecorder("test-controller"),
+				OverrideManager: overridemanager.New(mgr.GetClient(), mgr.GetEventRecorder("test-controller")),
 			}
 			err = c.SetupWithManager(mgr)
 			if tt.expectError {

@@ -117,7 +117,7 @@ func validate(karmada *operatorv1alpha1.Karmada) error {
 
 func (ctrl *Controller) validateKarmada(ctx context.Context, karmada *operatorv1alpha1.Karmada) error {
 	if err := validate(karmada); err != nil {
-		ctrl.EventRecorder.Event(karmada, corev1.EventTypeWarning, ValidationErrorReason, err.Error())
+		ctrl.EventRecorder.Eventf(karmada, nil, corev1.EventTypeWarning, ValidationErrorReason, "", err.Error())
 
 		newCondition := metav1.Condition{
 			Type:               string(operatorv1alpha1.Ready),

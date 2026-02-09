@@ -27,7 +27,7 @@ import (
 	"k8s.io/apimachinery/pkg/api/meta"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/dynamic"
-	"k8s.io/client-go/tools/record"
+	"k8s.io/client-go/tools/events"
 	"k8s.io/klog/v2"
 	"k8s.io/utils/ptr"
 	controllerruntime "sigs.k8s.io/controller-runtime"
@@ -40,7 +40,7 @@ import (
 
 	policyv1alpha1 "github.com/karmada-io/karmada/pkg/apis/policy/v1alpha1"
 	workv1alpha2 "github.com/karmada-io/karmada/pkg/apis/work/v1alpha2"
-	"github.com/karmada-io/karmada/pkg/events"
+	kmdevents "github.com/karmada-io/karmada/pkg/events"
 	"github.com/karmada-io/karmada/pkg/metrics"
 	"github.com/karmada-io/karmada/pkg/resourceinterpreter"
 	"github.com/karmada-io/karmada/pkg/sharedcli/ratelimiterflag"
@@ -58,7 +58,7 @@ type ClusterResourceBindingController struct {
 	client.Client                                                   // used to operate ClusterResourceBinding resources.
 	DynamicClient       dynamic.Interface                           // used to fetch arbitrary resources from api server.
 	InformerManager     genericmanager.SingleClusterInformerManager // used to fetch arbitrary resources from cache.
-	EventRecorder       record.EventRecorder
+	EventRecorder       events.EventRecorder
 	RESTMapper          meta.RESTMapper
 	OverrideManager     overridemanager.OverrideManager
 	ResourceInterpreter resourceinterpreter.ResourceInterpreter
@@ -139,15 +139,15 @@ func (c *ClusterResourceBindingController) syncBinding(ctx context.Context, bind
 	metrics.ObserveSyncWorkLatency(err, start)
 	if err != nil {
 		klog.ErrorS(err, "Failed to transform ClusterResourceBinding to works.", "ClusterResourceBinding", binding.Name)
-		c.EventRecorder.Event(binding, corev1.EventTypeWarning, events.EventReasonSyncWorkFailed, err.Error())
-		c.EventRecorder.Event(workload, corev1.EventTypeWarning, events.EventReasonSyncWorkFailed, err.Error())
+		c.EventRecorder.Eventf(binding, nil, corev1.EventTypeWarning, kmdevents.EventReasonSyncWorkFailed, "", err.Error())
+		c.EventRecorder.Eventf(workload, nil, corev1.EventTypeWarning, kmdevents.EventReasonSyncWorkFailed, "", err.Error())
 		return controllerruntime.Result{}, err
 	}
 
 	msg := fmt.Sprintf("Sync work of ClusterResourceBinding(%s) successful.", binding.Name)
 	klog.V(4).InfoS("Sync work of ClusterResourceBinding successful.", "ClusterResourceBinding", binding.Name)
-	c.EventRecorder.Event(binding, corev1.EventTypeNormal, events.EventReasonSyncWorkSucceed, msg)
-	c.EventRecorder.Event(workload, corev1.EventTypeNormal, events.EventReasonSyncWorkSucceed, msg)
+	c.EventRecorder.Eventf(binding, nil, corev1.EventTypeNormal, kmdevents.EventReasonSyncWorkSucceed, "", msg)
+	c.EventRecorder.Eventf(workload, nil, corev1.EventTypeNormal, kmdevents.EventReasonSyncWorkSucceed, "", msg)
 	return controllerruntime.Result{}, nil
 }
 
@@ -155,14 +155,14 @@ func (c *ClusterResourceBindingController) removeOrphanWorks(ctx context.Context
 	works, err := helper.FindOrphanWorks(ctx, c.Client, "", binding.Name, binding.Labels[workv1alpha2.ClusterResourceBindingPermanentIDLabel], helper.ObtainBindingSpecExistingClusters(binding.Spec))
 	if err != nil {
 		klog.ErrorS(err, "Failed to find orphan works of ClusterResourceBinding.", "ClusterResourceBinding", binding.Name)
-		c.EventRecorder.Event(binding, corev1.EventTypeWarning, events.EventReasonCleanupWorkFailed, err.Error())
+		c.EventRecorder.Eventf(binding, nil, corev1.EventTypeWarning, kmdevents.EventReasonCleanupWorkFailed, "", err.Error())
 		return err
 	}
 
 	err = helper.RemoveOrphanWorks(ctx, c.Client, works)
 	if err != nil {
 		klog.ErrorS(err, "Failed to remove orphan works of ClusterResourceBinding.", "ClusterResourceBinding", binding.Name)
-		c.EventRecorder.Event(binding, corev1.EventTypeWarning, events.EventReasonCleanupWorkFailed, err.Error())
+		c.EventRecorder.Eventf(binding, nil, corev1.EventTypeWarning, kmdevents.EventReasonCleanupWorkFailed, "", err.Error())
 		return err
 	}
 
@@ -174,7 +174,7 @@ func (c *ClusterResourceBindingController) checkDirectPurgeOrphanWorks(ctx conte
 	works, err := helper.FindWorksInClusters(ctx, c.Client, "", binding.Name, binding.Labels[workv1alpha2.ClusterResourceBindingPermanentIDLabel], helper.ObtainClustersWithPurgeModeDirectly(binding.Spec))
 	if err != nil {
 		klog.ErrorS(err, "Failed to find orphaned works in clusters with PurgeMode 'Directly'", "ClusterResourceBinding", binding.Name)
-		c.EventRecorder.Event(binding, corev1.EventTypeWarning, events.EventReasonCleanupWorkFailed, err.Error())
+		c.EventRecorder.Eventf(binding, nil, corev1.EventTypeWarning, kmdevents.EventReasonCleanupWorkFailed, "", err.Error())
 		return false, err
 	}
 

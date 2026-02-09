@@ -39,7 +39,7 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	listcorev1 "k8s.io/client-go/listers/core/v1"
-	"k8s.io/client-go/tools/record"
+	"k8s.io/client-go/tools/events"
 	"k8s.io/klog/v2"
 	controllerruntime "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -84,7 +84,7 @@ type FHPAController struct {
 	ReplicaCalc               *ReplicaCalculator
 	ClusterScaleClientSetFunc func(string, client.Client) (*util.ClusterScaleClient, error)
 	RESTMapper                meta.RESTMapper
-	EventRecorder             record.EventRecorder
+	EventRecorder             events.EventRecorder
 	TypedInformerManager      typedmanager.MultiClusterInformerManager
 	ClusterCacheSyncTimeout   metav1.Duration
 
@@ -212,7 +212,7 @@ func (c *FHPAController) reconcileAutoscaler(ctx context.Context, hpa *autoscali
 
 	targetGV, err := schema.ParseGroupVersion(hpa.Spec.ScaleTargetRef.APIVersion)
 	if err != nil {
-		c.EventRecorder.Event(hpa, corev1.EventTypeWarning, "FailedGetScale", err.Error())
+		c.EventRecorder.Eventf(hpa, nil, corev1.EventTypeWarning, "FailedGetScale", "", err.Error())
 		setCondition(hpa, autoscalingv2.AbleToScale, corev1.ConditionFalse, "FailedGetScale", "the HPA controller was unable to get the target's current scale: %v", err)
 		if err := c.updateStatusIfNeeded(ctx, hpaStatusOriginal, hpa); err != nil {
 			utilruntime.HandleError(err)
@@ -230,7 +230,7 @@ func (c *FHPAController) reconcileAutoscaler(ctx context.Context, hpa *autoscali
 	targetResource.SetGroupVersionKind(targetGVK)
 	err = c.Get(ctx, types.NamespacedName{Name: hpa.Spec.ScaleTargetRef.Name, Namespace: hpa.Namespace}, targetResource)
 	if err != nil {
-		c.EventRecorder.Event(hpa, corev1.EventTypeWarning, "FailedGetScaleTargetRef", err.Error())
+		c.EventRecorder.Eventf(hpa, nil, corev1.EventTypeWarning, "FailedGetScaleTargetRef", "", err.Error())
 		setCondition(hpa, autoscalingv2.AbleToScale, corev1.ConditionFalse, "FailedGetScaleTargetRef", "the HPA controller was unable to get the target reference object: %v", err)
 		if err := c.updateStatusIfNeeded(ctx, hpaStatusOriginal, hpa); err != nil {
 			utilruntime.HandleError(err)
@@ -240,7 +240,7 @@ func (c *FHPAController) reconcileAutoscaler(ctx context.Context, hpa *autoscali
 
 	binding, err := c.getBindingByLabel(ctx, targetResource.GetLabels(), hpa.Spec.ScaleTargetRef)
 	if err != nil {
-		c.EventRecorder.Event(hpa, corev1.EventTypeWarning, "FailedGetBindings", err.Error())
+		c.EventRecorder.Eventf(hpa, nil, corev1.EventTypeWarning, "FailedGetBindings", "", err.Error())
 		setCondition(hpa, autoscalingv2.AbleToScale, corev1.ConditionFalse, "FailedGetBinding", "the HPA controller was unable to get the binding by scaleTargetRef: %v", err)
 		if err := c.updateStatusIfNeeded(ctx, hpaStatusOriginal, hpa); err != nil {
 			utilruntime.HandleError(err)
@@ -250,7 +250,7 @@ func (c *FHPAController) reconcileAutoscaler(ctx context.Context, hpa *autoscali
 
 	allClusters, err := c.getTargetCluster(ctx, binding)
 	if err != nil {
-		c.EventRecorder.Event(hpa, corev1.EventTypeWarning, "FailedGetTargetClusters", err.Error())
+		c.EventRecorder.Eventf(hpa, nil, corev1.EventTypeWarning, "FailedGetTargetClusters", "", err.Error())
 		setCondition(hpa, autoscalingv2.AbleToScale, corev1.ConditionFalse, "FailedGetTargetClusters", "the HPA controller was unable to get the target clusters from binding: %v", err)
 		if err := c.updateStatusIfNeeded(ctx, hpaStatusOriginal, hpa); err != nil {
 			utilruntime.HandleError(err)
@@ -260,7 +260,7 @@ func (c *FHPAController) reconcileAutoscaler(ctx context.Context, hpa *autoscali
 
 	mapping, err := c.RESTMapper.RESTMapping(targetGVK.GroupKind(), targetGVK.Version)
 	if err != nil {
-		c.EventRecorder.Event(hpa, corev1.EventTypeWarning, "FailedGetScale", err.Error())
+		c.EventRecorder.Eventf(hpa, nil, corev1.EventTypeWarning, "FailedGetScale", "", err.Error())
 		setCondition(hpa, autoscalingv2.AbleToScale, corev1.ConditionFalse, "FailedGetScale", "the HPA controller was unable to get the target's current scale: %v", err)
 		if err := c.updateStatusIfNeeded(ctx, hpaStatusOriginal, hpa); err != nil {
 			utilruntime.HandleError(err)
@@ -270,7 +270,7 @@ func (c *FHPAController) reconcileAutoscaler(ctx context.Context, hpa *autoscali
 
 	scale, podList, err := c.scaleForTargetCluster(ctx, allClusters, hpa, mapping)
 	if err != nil {
-		c.EventRecorder.Event(hpa, corev1.EventTypeWarning, "FailedGetScale", err.Error())
+		c.EventRecorder.Eventf(hpa, nil, corev1.EventTypeWarning, "FailedGetScale", "", err.Error())
 		setCondition(hpa, autoscalingv2.AbleToScale, corev1.ConditionFalse, "FailedGetScale", "the HPA controller was unable to get the target's current scale: %v", err)
 		if err := c.updateStatusIfNeeded(ctx, hpaStatusOriginal, hpa); err != nil {
 			utilruntime.HandleError(err)
@@ -336,7 +336,7 @@ func (c *FHPAController) reconcileAutoscaler(ctx context.Context, hpa *autoscali
 			if err := c.updateStatusIfNeeded(ctx, hpaStatusOriginal, hpa); err != nil {
 				utilruntime.HandleError(err)
 			}
-			c.EventRecorder.Event(hpa, corev1.EventTypeWarning, "FailedComputeMetricsReplicas", err.Error())
+			c.EventRecorder.Eventf(hpa, nil, corev1.EventTypeWarning, "FailedComputeMetricsReplicas", "", err.Error())
 			return fmt.Errorf("failed to compute desired number of replicas based on listed metrics for %s: %v", reference, err)
 		}
 		if err != nil {
@@ -371,7 +371,7 @@ func (c *FHPAController) reconcileAutoscaler(ctx context.Context, hpa *autoscali
 		}
 		err = c.Client.SubResource("scale").Update(ctx, targetResource, client.WithSubResourceBody(templateScaleObj))
 		if err != nil {
-			c.EventRecorder.Eventf(hpa, corev1.EventTypeWarning, "FailedRescale", "New size: %d; reason: %s; error: %v", desiredReplicas, rescaleReason, err.Error())
+			c.EventRecorder.Eventf(hpa, nil, corev1.EventTypeWarning, "FailedRescale", "", "New size: %d; reason: %s; error: %v", desiredReplicas, rescaleReason, err.Error())
 			setCondition(hpa, autoscalingv2.AbleToScale, corev1.ConditionFalse, "FailedUpdateScale", "the HPA controller was unable to update the target scale: %v", err)
 			c.setCurrentReplicasInStatus(hpa, currentReplicas)
 			if err := c.updateStatusIfNeeded(ctx, hpaStatusOriginal, hpa); err != nil {
@@ -380,7 +380,7 @@ func (c *FHPAController) reconcileAutoscaler(ctx context.Context, hpa *autoscali
 			return fmt.Errorf("failed to rescale %s: %v", reference, err)
 		}
 		setCondition(hpa, autoscalingv2.AbleToScale, corev1.ConditionTrue, "SucceededRescale", "the HPA controller was able to update the target scale to %d", desiredReplicas)
-		c.EventRecorder.Eventf(hpa, corev1.EventTypeNormal, "SuccessfulRescale", "New size: %d; reason: %s", desiredReplicas, rescaleReason)
+		c.EventRecorder.Eventf(hpa, nil, corev1.EventTypeNormal, "SuccessfulRescale", "", "New size: %d; reason: %s", desiredReplicas, rescaleReason)
 		c.storeScaleEvent(hpa.Spec.Behavior, key, currentReplicas, desiredReplicas)
 		klog.InfoS("Successfully rescaled FederatedHPA",
 			"hpaName", hpa.Name, "currentReplicas", currentReplicas, "desiredReplicas", desiredReplicas, "rescaleReason", rescaleReason)
@@ -508,7 +508,7 @@ func (c *FHPAController) scaleForTargetCluster(ctx context.Context, clusters []s
 
 		if scale.Status.Selector == "" {
 			errMsg := "selector is required"
-			c.EventRecorder.Event(hpa, corev1.EventTypeWarning, "SelectorRequired", errMsg)
+			c.EventRecorder.Eventf(hpa, nil, corev1.EventTypeWarning, "SelectorRequired", "", errMsg)
 			setCondition(hpa, autoscalingv2.ScalingActive, corev1.ConditionFalse, "InvalidSelector", "the HPA target's scale is missing a selector")
 			continue
 		}
@@ -516,7 +516,7 @@ func (c *FHPAController) scaleForTargetCluster(ctx context.Context, clusters []s
 		selector, err := labels.Parse(scale.Status.Selector)
 		if err != nil {
 			errMsg := fmt.Sprintf("couldn't convert selector into a corresponding internal selector object: %v", err)
-			c.EventRecorder.Event(hpa, corev1.EventTypeWarning, "InvalidSelector", errMsg)
+			c.EventRecorder.Eventf(hpa, nil, corev1.EventTypeWarning, "InvalidSelector", "", errMsg)
 			setCondition(hpa, autoscalingv2.ScalingActive, corev1.ConditionFalse, "InvalidSelector", "%s", errMsg)
 			continue
 		}
@@ -676,7 +676,7 @@ func (c *FHPAController) validateAndParseSelector(hpa *autoscalingv1alpha1.Feder
 	parsedSelector, err := labels.Parse(selector)
 	if err != nil {
 		errMsg := fmt.Sprintf("couldn't convert selector into a corresponding internal selector object: %v", err)
-		c.EventRecorder.Event(hpa, corev1.EventTypeWarning, "InvalidSelector", errMsg)
+		c.EventRecorder.Eventf(hpa, nil, corev1.EventTypeWarning, "InvalidSelector", "", errMsg)
 		setCondition(hpa, autoscalingv2.ScalingActive, corev1.ConditionFalse, "InvalidSelector", "%s", errMsg)
 		return nil, errors.New(errMsg)
 	}
@@ -691,7 +691,7 @@ func (c *FHPAController) validateAndParseSelector(hpa *autoscalingv1alpha1.Feder
 	selectingHpas := c.hpasControllingPodsUnderSelector(podList)
 	if len(selectingHpas) > 1 {
 		errMsg := fmt.Sprintf("pods by selector %v are controlled by multiple HPAs: %v", selector, selectingHpas)
-		c.EventRecorder.Event(hpa, corev1.EventTypeWarning, "AmbiguousSelector", errMsg)
+		c.EventRecorder.Eventf(hpa, nil, corev1.EventTypeWarning, "AmbiguousSelector", "", errMsg)
 		setCondition(hpa, autoscalingv2.ScalingActive, corev1.ConditionFalse, "AmbiguousSelector", "%s", errMsg)
 		return nil, errors.New(errMsg)
 	}
@@ -1042,7 +1042,7 @@ func getReplicasChangePerPeriod(periodSeconds int32, scaleEvents []timestampedSc
 }
 
 func (c *FHPAController) getUnableComputeReplicaCountCondition(hpa runtime.Object, reason string, err error) (condition autoscalingv2.HorizontalPodAutoscalerCondition) {
-	c.EventRecorder.Event(hpa, corev1.EventTypeWarning, reason, err.Error())
+	c.EventRecorder.Eventf(hpa, nil, corev1.EventTypeWarning, reason, "", err.Error())
 	return autoscalingv2.HorizontalPodAutoscalerCondition{
 		Type:    autoscalingv2.ScalingActive,
 		Status:  corev1.ConditionFalse,
@@ -1373,7 +1373,7 @@ func (c *FHPAController) updateStatusIfNeeded(ctx context.Context, oldStatus *au
 func (c *FHPAController) updateStatus(ctx context.Context, hpa *autoscalingv1alpha1.FederatedHPA) error {
 	err := c.Status().Update(ctx, hpa)
 	if err != nil {
-		c.EventRecorder.Event(hpa, corev1.EventTypeWarning, "FailedUpdateStatus", err.Error())
+		c.EventRecorder.Eventf(hpa, nil, corev1.EventTypeWarning, "FailedUpdateStatus", "", err.Error())
 		return fmt.Errorf("failed to update status for %s: %v", hpa.Name, err)
 	}
 	klog.V(2).InfoS("Successfully updated status for hpa", "hpaName", hpa.Name)

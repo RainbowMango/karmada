@@ -29,7 +29,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/client-go/tools/cache"
-	"k8s.io/client-go/tools/record"
+	"k8s.io/client-go/tools/events"
 	"k8s.io/client-go/util/retry"
 	"k8s.io/klog/v2"
 	controllerruntime "sigs.k8s.io/controller-runtime"
@@ -42,7 +42,7 @@ import (
 	configv1alpha1 "github.com/karmada-io/karmada/pkg/apis/config/v1alpha1"
 	workv1alpha1 "github.com/karmada-io/karmada/pkg/apis/work/v1alpha1"
 	workv1alpha2 "github.com/karmada-io/karmada/pkg/apis/work/v1alpha2"
-	"github.com/karmada-io/karmada/pkg/events"
+	kmdevents "github.com/karmada-io/karmada/pkg/events"
 	"github.com/karmada-io/karmada/pkg/features"
 	"github.com/karmada-io/karmada/pkg/metrics"
 	"github.com/karmada-io/karmada/pkg/resourceinterpreter"
@@ -63,7 +63,7 @@ const WorkStatusControllerName = "work-status-controller"
 // WorkStatusController is to sync status of Work.
 type WorkStatusController struct {
 	client.Client   // used to operate Work resources.
-	EventRecorder   record.EventRecorder
+	EventRecorder   events.EventRecorder
 	RESTMapper      meta.RESTMapper
 	InformerManager genericmanager.MultiClusterInformerManager
 	eventHandler    cache.ResourceEventHandler // eventHandler knows how to handle events from the member cluster.
@@ -325,10 +325,10 @@ func (c *WorkStatusController) recreateResourceIfNeeded(ctx context.Context, wor
 			err := c.ObjectWatcher.Create(ctx, workloadKey.Cluster, manifest)
 			metrics.CountCreateResourceToCluster(err, workloadKey.GroupVersion().String(), workloadKey.Kind, workloadKey.Cluster, true)
 			if err != nil {
-				c.eventf(manifest, corev1.EventTypeWarning, events.EventReasonSyncWorkloadFailed, "Failed to create or update resource(%s/%s) in member cluster(%s): %v", manifest.GetNamespace(), manifest.GetName(), workloadKey.Cluster, err)
+				c.eventf(manifest, corev1.EventTypeWarning, kmdevents.EventReasonSyncWorkloadFailed, "Failed to create or update resource(%s/%s) in member cluster(%s): %v", manifest.GetNamespace(), manifest.GetName(), workloadKey.Cluster, err)
 				return err
 			}
-			c.eventf(manifest, corev1.EventTypeNormal, events.EventReasonSyncWorkloadSucceed, "Successfully applied resource(%s/%s) to cluster %s", manifest.GetNamespace(), manifest.GetName(), workloadKey.Cluster)
+			c.eventf(manifest, corev1.EventTypeNormal, kmdevents.EventReasonSyncWorkloadSucceed, "Successfully applied resource(%s/%s) to cluster %s", manifest.GetNamespace(), manifest.GetName(), workloadKey.Cluster)
 			return nil
 		}
 	}
@@ -363,10 +363,10 @@ func (c *WorkStatusController) reflectStatus(ctx context.Context, work *workv1al
 	statusRaw, err := c.ResourceInterpreter.ReflectStatus(clusterObj)
 	if err != nil {
 		klog.ErrorS(err, "Failed to reflect status for object with resourceInterpreter", "kind", clusterObj.GetKind(), "resource", clusterObj.GetNamespace()+"/"+clusterObj.GetName())
-		c.EventRecorder.Eventf(work, corev1.EventTypeWarning, events.EventReasonReflectStatusFailed, "Reflect status for object(%s/%s/%s) failed, err: %s.", clusterObj.GetKind(), clusterObj.GetNamespace(), clusterObj.GetName(), err.Error())
+		c.EventRecorder.Eventf(work, nil, corev1.EventTypeWarning, kmdevents.EventReasonReflectStatusFailed, "", "Reflect status for object(%s/%s/%s) failed, err: %s.", clusterObj.GetKind(), clusterObj.GetNamespace(), clusterObj.GetName(), err.Error())
 		return err
 	}
-	c.EventRecorder.Eventf(work, corev1.EventTypeNormal, events.EventReasonReflectStatusSucceed, "Reflect status for object(%s/%s/%s) succeed.", clusterObj.GetKind(), clusterObj.GetNamespace(), clusterObj.GetName())
+	c.EventRecorder.Eventf(work, nil, corev1.EventTypeNormal, kmdevents.EventReasonReflectStatusSucceed, "", "Reflect status for object(%s/%s/%s) succeed.", clusterObj.GetKind(), clusterObj.GetNamespace(), clusterObj.GetName())
 
 	resourceHealth := c.interpretHealth(clusterObj, work)
 
@@ -401,13 +401,13 @@ func (c *WorkStatusController) interpretHealth(clusterObj *unstructured.Unstruct
 	healthy, err := c.ResourceInterpreter.InterpretHealth(clusterObj)
 	if err != nil {
 		resourceHealth = workv1alpha1.ResourceUnknown
-		c.EventRecorder.Eventf(work, corev1.EventTypeWarning, events.EventReasonInterpretHealthFailed, "Interpret health of object(%s/%s/%s) failed, err: %s.", clusterObj.GetKind(), clusterObj.GetNamespace(), clusterObj.GetName(), err.Error())
+		c.EventRecorder.Eventf(work, nil, corev1.EventTypeWarning, kmdevents.EventReasonInterpretHealthFailed, "", "Interpret health of object(%s/%s/%s) failed, err: %s.", clusterObj.GetKind(), clusterObj.GetNamespace(), clusterObj.GetName(), err.Error())
 	} else if healthy {
 		resourceHealth = workv1alpha1.ResourceHealthy
-		c.EventRecorder.Eventf(work, corev1.EventTypeNormal, events.EventReasonInterpretHealthSucceed, "Interpret health of object(%s/%s/%s) as healthy.", clusterObj.GetKind(), clusterObj.GetNamespace(), clusterObj.GetName())
+		c.EventRecorder.Eventf(work, nil, corev1.EventTypeNormal, kmdevents.EventReasonInterpretHealthSucceed, "", "Interpret health of object(%s/%s/%s) as healthy.", clusterObj.GetKind(), clusterObj.GetNamespace(), clusterObj.GetName())
 	} else {
 		resourceHealth = workv1alpha1.ResourceUnhealthy
-		c.EventRecorder.Eventf(work, corev1.EventTypeNormal, events.EventReasonInterpretHealthSucceed, "Interpret health of object(%s/%s/%s) as unhealthy.", clusterObj.GetKind(), clusterObj.GetNamespace(), clusterObj.GetName())
+		c.EventRecorder.Eventf(work, nil, corev1.EventTypeNormal, kmdevents.EventReasonInterpretHealthSucceed, "", "Interpret health of object(%s/%s/%s) as unhealthy.", clusterObj.GetKind(), clusterObj.GetNamespace(), clusterObj.GetName())
 	}
 	return resourceHealth
 }
@@ -566,7 +566,7 @@ func (c *WorkStatusController) eventf(object *unstructured.Unstructured, eventTy
 		klog.ErrorS(err, "Ignoring event. Failed to build event reference.", "reason", reason, "kind", object.GetKind(), "reference", klog.KObj(object))
 		return
 	}
-	c.EventRecorder.Eventf(ref, eventType, reason, messageFmt, args...)
+	c.EventRecorder.Eventf(ref, nil, eventType, reason, "", messageFmt, args...)
 }
 
 func (c *WorkStatusController) onAdd(obj any, isInInitialList bool) {

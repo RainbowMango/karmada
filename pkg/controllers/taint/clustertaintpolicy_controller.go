@@ -24,7 +24,7 @@ import (
 
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/client-go/tools/record"
+	"k8s.io/client-go/tools/events"
 	"k8s.io/klog/v2"
 	"k8s.io/utils/ptr"
 	controllerruntime "sigs.k8s.io/controller-runtime"
@@ -38,7 +38,7 @@ import (
 
 	clusterv1alpha1 "github.com/karmada-io/karmada/pkg/apis/cluster/v1alpha1"
 	policyv1alpha1 "github.com/karmada-io/karmada/pkg/apis/policy/v1alpha1"
-	"github.com/karmada-io/karmada/pkg/events"
+	kmdevents "github.com/karmada-io/karmada/pkg/events"
 	"github.com/karmada-io/karmada/pkg/sharedcli/ratelimiterflag"
 	"github.com/karmada-io/karmada/pkg/util"
 	utilhelper "github.com/karmada-io/karmada/pkg/util/helper"
@@ -50,7 +50,7 @@ const ControllerName = "cluster-taint-policy-controller"
 // ClusterTaintPolicyController is to sync ClusterTaintPolicy.
 type ClusterTaintPolicyController struct {
 	client.Client
-	EventRecorder      record.EventRecorder
+	EventRecorder      events.EventRecorder
 	RateLimiterOptions ratelimiterflag.Options
 }
 
@@ -100,14 +100,14 @@ func (c *ClusterTaintPolicyController) Reconcile(ctx context.Context, req contro
 		err := c.Client.Patch(ctx, clusterCopyObj, objPatch)
 		if err != nil {
 			klog.ErrorS(err, "Failed to patch Cluster", "cluster", req.Name)
-			c.EventRecorder.Event(clusterCopyObj, corev1.EventTypeWarning, events.EventReasonTaintClusterFailed, err.Error())
+			c.EventRecorder.Eventf(clusterCopyObj, nil, corev1.EventTypeWarning, kmdevents.EventReasonTaintClusterFailed, "", err.Error())
 			return controllerruntime.Result{}, err
 		}
 
 		msg := fmt.Sprintf("Update Cluster(%s) with taints(%v) succeed", req.Name,
 			utilhelper.GenerateTaintsMessage(clusterCopyObj.Spec.Taints))
 		klog.InfoS("Successfully updated cluster taints", "cluster", req.Name, "taints", clusterCopyObj.Spec.Taints)
-		c.EventRecorder.Event(clusterCopyObj, corev1.EventTypeNormal, events.EventReasonTaintClusterSucceed, msg)
+		c.EventRecorder.Eventf(clusterCopyObj, nil, corev1.EventTypeNormal, kmdevents.EventReasonTaintClusterSucceed, "", msg)
 		return controllerruntime.Result{}, nil
 	}
 	klog.V(4).InfoS("Cluster taints are up to date.", "cluster", req.Name)

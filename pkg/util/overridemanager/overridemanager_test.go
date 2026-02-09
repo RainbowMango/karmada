@@ -23,7 +23,7 @@ import (
 	apiextensionsv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
-	"k8s.io/client-go/tools/record"
+	"k8s.io/client-go/tools/events"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 
@@ -54,7 +54,7 @@ func Test_overrideManagerImpl_ApplyLabelAnnotationOverriderPolicies(t *testing.T
 	clusterRoleObj, _ := utilhelper.ToUnstructured(clusterRole)
 	type fields struct {
 		Client        client.Client
-		EventRecorder record.EventRecorder
+		EventRecorder events.EventRecorder
 	}
 	type args struct {
 		rawObj      *unstructured.Unstructured
@@ -109,7 +109,7 @@ func Test_overrideManagerImpl_ApplyLabelAnnotationOverriderPolicies(t *testing.T
 						},
 					},
 				).Build(),
-				EventRecorder: &record.FakeRecorder{},
+				EventRecorder: &events.FakeRecorder{},
 			},
 			args: args{
 				rawObj:      deploymentObj,
@@ -183,7 +183,7 @@ func Test_overrideManagerImpl_ApplyLabelAnnotationOverriderPolicies(t *testing.T
 						},
 					},
 				).Build(),
-				EventRecorder: &record.FakeRecorder{},
+				EventRecorder: &events.FakeRecorder{},
 			},
 			args: args{
 				rawObj:      clusterRoleObj,
@@ -454,7 +454,7 @@ key:
 
 	type fields struct {
 		Client        client.Client
-		EventRecorder record.EventRecorder
+		EventRecorder events.EventRecorder
 	}
 	type args struct {
 		rawObj      *unstructured.Unstructured
@@ -505,7 +505,7 @@ key:
 						},
 					},
 				).Build(),
-				EventRecorder: &record.FakeRecorder{},
+				EventRecorder: &events.FakeRecorder{},
 			},
 			args: args{
 				rawObj:      configmapObj,
@@ -573,7 +573,7 @@ func Test_overrideManagerImpl_ApplyJSONOverridePolicies_JSON(t *testing.T) {
 
 	type fields struct {
 		Client        client.Client
-		EventRecorder record.EventRecorder
+		EventRecorder events.EventRecorder
 	}
 	type args struct {
 		rawObj      *unstructured.Unstructured
@@ -624,7 +624,7 @@ func Test_overrideManagerImpl_ApplyJSONOverridePolicies_JSON(t *testing.T) {
 						},
 					},
 				).Build(),
-				EventRecorder: &record.FakeRecorder{},
+				EventRecorder: &events.FakeRecorder{},
 			},
 			args: args{
 				rawObj:      configmapObj,

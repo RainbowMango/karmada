@@ -36,7 +36,7 @@ import (
 	"k8s.io/client-go/discovery"
 	"k8s.io/client-go/dynamic"
 	"k8s.io/client-go/tools/cache"
-	"k8s.io/client-go/tools/record"
+	"k8s.io/client-go/tools/events"
 	"k8s.io/client-go/util/retry"
 	"k8s.io/klog/v2"
 	"k8s.io/utils/ptr"
@@ -48,7 +48,7 @@ import (
 	configv1alpha1 "github.com/karmada-io/karmada/pkg/apis/config/v1alpha1"
 	policyv1alpha1 "github.com/karmada-io/karmada/pkg/apis/policy/v1alpha1"
 	workv1alpha2 "github.com/karmada-io/karmada/pkg/apis/work/v1alpha2"
-	"github.com/karmada-io/karmada/pkg/events"
+	kmdevents "github.com/karmada-io/karmada/pkg/events"
 	"github.com/karmada-io/karmada/pkg/features"
 	"github.com/karmada-io/karmada/pkg/metrics"
 	"github.com/karmada-io/karmada/pkg/resourceinterpreter"
@@ -80,7 +80,7 @@ type ResourceDetector struct {
 	SkippedPropagatingNamespaces []*regexp.Regexp
 	// ResourceInterpreter knows the details of resource structure.
 	ResourceInterpreter resourceinterpreter.ResourceInterpreter
-	EventRecorder       record.EventRecorder
+	EventRecorder       events.EventRecorder
 	// policyReconcileWorker maintains a rate limited queue which used to store PropagationPolicy's key and
 	// a reconcile function to consume the items in queue.
 	policyReconcileWorker util.AsyncPriorityWorker
@@ -451,9 +451,9 @@ func (d *ResourceDetector) ApplyPolicy(object *unstructured.Unstructured, object
 	defer func() {
 		metrics.ObserveApplyPolicyAttemptAndLatency(err, start)
 		if err != nil {
-			d.EventRecorder.Eventf(object, corev1.EventTypeWarning, events.EventReasonApplyPolicyFailed, "Apply policy(%s/%s) failed: %v", policy.Namespace, policy.Name, err)
+			d.EventRecorder.Eventf(object, nil, corev1.EventTypeWarning, kmdevents.EventReasonApplyPolicyFailed, "", "Apply policy(%s/%s) failed: %v", policy.Namespace, policy.Name, err)
 		} else if operationResult != controllerutil.OperationResultNone {
-			d.EventRecorder.Eventf(object, corev1.EventTypeNormal, events.EventReasonApplyPolicySucceed, "Apply policy(%s/%s) succeed", policy.Namespace, policy.Name)
+			d.EventRecorder.Eventf(object, nil, corev1.EventTypeNormal, kmdevents.EventReasonApplyPolicySucceed, "", "Apply policy(%s/%s) succeed", policy.Namespace, policy.Name)
 		}
 	}()
 
@@ -539,9 +539,9 @@ func (d *ResourceDetector) ApplyClusterPolicy(object *unstructured.Unstructured,
 	defer func() {
 		metrics.ObserveApplyPolicyAttemptAndLatency(err, start)
 		if err != nil {
-			d.EventRecorder.Eventf(object, corev1.EventTypeWarning, events.EventReasonApplyPolicyFailed, "Apply cluster policy(%s) failed: %v", policy.Name, err)
+			d.EventRecorder.Eventf(object, nil, corev1.EventTypeWarning, kmdevents.EventReasonApplyPolicyFailed, "", "Apply cluster policy(%s) failed: %v", policy.Name, err)
 		} else if operationResult != controllerutil.OperationResultNone {
-			d.EventRecorder.Eventf(object, corev1.EventTypeNormal, events.EventReasonApplyPolicySucceed, "Apply cluster policy(%s) succeed", policy.Name)
+			d.EventRecorder.Eventf(object, nil, corev1.EventTypeNormal, kmdevents.EventReasonApplyPolicySucceed, "", "Apply cluster policy(%s) succeed", policy.Name)
 		}
 	}()
 

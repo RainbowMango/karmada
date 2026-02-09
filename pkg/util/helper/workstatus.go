@@ -29,7 +29,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/util/sets"
-	"k8s.io/client-go/tools/record"
+	"k8s.io/client-go/tools/events"
 	"k8s.io/client-go/util/retry"
 	"k8s.io/klog/v2"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -37,7 +37,7 @@ import (
 
 	workv1alpha1 "github.com/karmada-io/karmada/pkg/apis/work/v1alpha1"
 	workv1alpha2 "github.com/karmada-io/karmada/pkg/apis/work/v1alpha2"
-	"github.com/karmada-io/karmada/pkg/events"
+	kmdevents "github.com/karmada-io/karmada/pkg/events"
 	"github.com/karmada-io/karmada/pkg/util"
 	"github.com/karmada-io/karmada/pkg/util/names"
 )
@@ -55,12 +55,7 @@ const (
 
 // AggregateResourceBindingWorkStatus will collect all work statuses with current ResourceBinding objects,
 // then aggregate status info to current ResourceBinding status.
-func AggregateResourceBindingWorkStatus(
-	ctx context.Context,
-	c client.Client,
-	binding *workv1alpha2.ResourceBinding,
-	eventRecorder record.EventRecorder,
-) error {
+func AggregateResourceBindingWorkStatus(ctx context.Context, c client.Client, binding *workv1alpha2.ResourceBinding, eventRecorder events.EventRecorder) error {
 	workList, err := GetWorksByBindingID(ctx, c, binding.Labels[workv1alpha2.ResourceBindingPermanentIDLabel], true)
 	if err != nil {
 		return err
@@ -83,13 +78,13 @@ func AggregateResourceBindingWorkStatus(
 		})
 		return err
 	}); err != nil {
-		eventRecorder.Event(binding, corev1.EventTypeWarning, events.EventReasonAggregateStatusFailed, err.Error())
+		eventRecorder.Eventf(binding, nil, corev1.EventTypeWarning, kmdevents.EventReasonAggregateStatusFailed, "", err.Error())
 		return err
 	}
 
 	if operationResult == controllerutil.OperationResultUpdatedStatusOnly {
 		msg := fmt.Sprintf("Update ResourceBinding(%s/%s) with AggregatedStatus successfully.", binding.Namespace, binding.Name)
-		eventRecorder.Event(binding, corev1.EventTypeNormal, events.EventReasonAggregateStatusSucceed, msg)
+		eventRecorder.Eventf(binding, nil, corev1.EventTypeNormal, kmdevents.EventReasonAggregateStatusSucceed, "", msg)
 	} else {
 		klog.Infof("New aggregatedStatuses are equal with old ResourceBinding(%s/%s) AggregatedStatus, no update required.", binding.Namespace, binding.Name)
 	}
@@ -98,12 +93,7 @@ func AggregateResourceBindingWorkStatus(
 
 // AggregateClusterResourceBindingWorkStatus will collect all work statuses with current ClusterResourceBinding objects,
 // then aggregate status info to current ClusterResourceBinding status.
-func AggregateClusterResourceBindingWorkStatus(
-	ctx context.Context,
-	c client.Client,
-	binding *workv1alpha2.ClusterResourceBinding,
-	eventRecorder record.EventRecorder,
-) error {
+func AggregateClusterResourceBindingWorkStatus(ctx context.Context, c client.Client, binding *workv1alpha2.ClusterResourceBinding, eventRecorder events.EventRecorder) error {
 	workList, err := GetWorksByBindingID(ctx, c, binding.Labels[workv1alpha2.ClusterResourceBindingPermanentIDLabel], false)
 	if err != nil {
 		return err
@@ -126,13 +116,13 @@ func AggregateClusterResourceBindingWorkStatus(
 		})
 		return err
 	}); err != nil {
-		eventRecorder.Event(binding, corev1.EventTypeWarning, events.EventReasonAggregateStatusFailed, err.Error())
+		eventRecorder.Eventf(binding, nil, corev1.EventTypeWarning, kmdevents.EventReasonAggregateStatusFailed, "", err.Error())
 		return err
 	}
 
 	if operationResult == controllerutil.OperationResultUpdatedStatusOnly {
 		msg := fmt.Sprintf("Update ClusterResourceBinding(%s) with AggregatedStatus successfully.", binding.Name)
-		eventRecorder.Event(binding, corev1.EventTypeNormal, events.EventReasonAggregateStatusSucceed, msg)
+		eventRecorder.Eventf(binding, nil, corev1.EventTypeNormal, kmdevents.EventReasonAggregateStatusSucceed, "", msg)
 	} else {
 		klog.Infof("New aggregatedStatuses are equal with old ClusterResourceBinding(%s) AggregatedStatus, no update required.", binding.Name)
 	}

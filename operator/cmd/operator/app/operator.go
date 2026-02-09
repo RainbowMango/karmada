@@ -155,7 +155,7 @@ func startKarmadaController(ctx operatorctx.Context) (bool, error) {
 	ctrl := &karmada.Controller{
 		Config:        ctx.Manager.GetConfig(),
 		Client:        ctx.Manager.GetClient(),
-		EventRecorder: ctx.Manager.GetEventRecorderFor(karmada.ControllerName),
+		EventRecorder: ctx.Manager.GetEventRecorder(karmada.ControllerName),
 	}
 	if err := ctrl.SetupWithManager(ctx.Manager); err != nil {
 		klog.ErrorS(err, "unable to setup with manager", "controller", karmada.ControllerName)

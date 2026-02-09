@@ -33,7 +33,7 @@ import (
 	utilerrors "k8s.io/apimachinery/pkg/util/errors"
 	"k8s.io/client-go/dynamic"
 	"k8s.io/client-go/tools/cache"
-	"k8s.io/client-go/tools/record"
+	"k8s.io/client-go/tools/events"
 	"k8s.io/client-go/util/retry"
 	"k8s.io/klog/v2"
 	"k8s.io/utils/ptr"
@@ -50,7 +50,7 @@ import (
 
 	configv1alpha1 "github.com/karmada-io/karmada/pkg/apis/config/v1alpha1"
 	workv1alpha2 "github.com/karmada-io/karmada/pkg/apis/work/v1alpha2"
-	"github.com/karmada-io/karmada/pkg/events"
+	kmdevents "github.com/karmada-io/karmada/pkg/events"
 	"github.com/karmada-io/karmada/pkg/features"
 	"github.com/karmada-io/karmada/pkg/resourceinterpreter"
 	"github.com/karmada-io/karmada/pkg/sharedcli/ratelimiterflag"
@@ -97,7 +97,7 @@ type DependenciesDistributor struct {
 	// DynamicClient used to fetch arbitrary resources.
 	DynamicClient       dynamic.Interface
 	InformerManager     genericmanager.SingleClusterInformerManager
-	EventRecorder       record.EventRecorder
+	EventRecorder       events.EventRecorder
 	RESTMapper          meta.RESTMapper
 	ResourceInterpreter resourceinterpreter.ResourceInterpreter
 	RateLimiterOptions  ratelimiterflag.Options
@@ -292,10 +292,10 @@ func (d *DependenciesDistributor) Reconcile(ctx context.Context, request reconci
 	dependencies, err := d.ResourceInterpreter.GetDependencies(workload)
 	if err != nil {
 		klog.Errorf("Failed to customize dependencies for %s(%s), %v", workload.GroupVersionKind(), workload.GetName(), err)
-		d.EventRecorder.Eventf(workload, corev1.EventTypeWarning, events.EventReasonGetDependenciesFailed, err.Error())
+		d.EventRecorder.Eventf(workload, nil, corev1.EventTypeWarning, kmdevents.EventReasonGetDependenciesFailed, "", err.Error())
 		return reconcile.Result{}, err
 	}
-	d.EventRecorder.Eventf(workload, corev1.EventTypeNormal, events.EventReasonGetDependenciesSucceed, "Get dependencies(%+v) succeed.", dependencies)
+	d.EventRecorder.Eventf(workload, nil, corev1.EventTypeNormal, kmdevents.EventReasonGetDependenciesSucceed, "", "Get dependencies(%+v) succeed.", dependencies)
 
 	if err = d.addFinalizer(ctx, bindingObject); err != nil {
 		klog.Errorf("Failed to add finalizer(%s) for ResourceBinding(%s): %v", util.BindingDependenciesDistributorFinalizer, request.NamespacedName, err)
@@ -392,9 +392,9 @@ func (d *DependenciesDistributor) handleDependentResource(
 func (d *DependenciesDistributor) syncScheduleResultToAttachedBindings(ctx context.Context, independentBinding *workv1alpha2.ResourceBinding, dependencies []configv1alpha1.DependentObjectReference) (err error) {
 	defer func() {
 		if err != nil {
-			d.EventRecorder.Eventf(independentBinding, corev1.EventTypeWarning, events.EventReasonSyncScheduleResultToDependenciesFailed, err.Error())
+			d.EventRecorder.Eventf(independentBinding, nil, corev1.EventTypeWarning, kmdevents.EventReasonSyncScheduleResultToDependenciesFailed, "", err.Error())
 		} else {
-			d.EventRecorder.Eventf(independentBinding, corev1.EventTypeNormal, events.EventReasonSyncScheduleResultToDependenciesSucceed, "Sync schedule results to dependencies succeed.")
+			d.EventRecorder.Eventf(independentBinding, nil, corev1.EventTypeNormal, kmdevents.EventReasonSyncScheduleResultToDependenciesSucceed, "", "Sync schedule results to dependencies succeed.")
 		}
 	}()
 

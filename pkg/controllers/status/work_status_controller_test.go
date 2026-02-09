@@ -37,7 +37,7 @@ import (
 	dynamicfake "k8s.io/client-go/dynamic/fake"
 	"k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/tools/cache"
-	"k8s.io/client-go/tools/record"
+	"k8s.io/client-go/tools/events"
 	"k8s.io/utils/ptr"
 	controllerruntime "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -46,7 +46,7 @@ import (
 	clusterv1alpha1 "github.com/karmada-io/karmada/pkg/apis/cluster/v1alpha1"
 	workv1alpha1 "github.com/karmada-io/karmada/pkg/apis/work/v1alpha1"
 	workv1alpha2 "github.com/karmada-io/karmada/pkg/apis/work/v1alpha2"
-	"github.com/karmada-io/karmada/pkg/events"
+	kmdevents "github.com/karmada-io/karmada/pkg/events"
 	"github.com/karmada-io/karmada/pkg/resourceinterpreter/default/native"
 	"github.com/karmada-io/karmada/pkg/sharedcli/ratelimiterflag"
 	"github.com/karmada-io/karmada/pkg/util"
@@ -746,7 +746,7 @@ func newWorkStatusController(cluster *clusterv1alpha1.Cluster, dynamicClientSets
 		ClusterCacheSyncTimeout:     metav1.Duration{},
 		RateLimiterOptions:          ratelimiterflag.Options{},
 		eventHandler:                nil,
-		EventRecorder:               record.NewFakeRecorder(1024),
+		EventRecorder:               events.NewFakeRecorder(1024),
 		RESTMapper: func() meta.RESTMapper {
 			m := meta.NewDefaultRESTMapper([]schema.GroupVersion{corev1.SchemeGroupVersion})
 			m.Add(corev1.SchemeGroupVersion.WithKind("Pod"), meta.RESTScopeNamespace)
@@ -1065,7 +1065,7 @@ func TestWorkStatusController_interpretHealth(t *testing.T) {
 			name:                   "deployment without status is interpreted as unhealthy",
 			clusterObj:             testhelper.NewDeployment("foo", "bar"),
 			expectedResourceHealth: workv1alpha1.ResourceUnhealthy,
-			expectedEventReason:    events.EventReasonInterpretHealthSucceed,
+			expectedEventReason:    kmdevents.EventReasonInterpretHealthSucceed,
 		},
 		{
 			name:                   "cluster role without status is interpreted as healthy",
@@ -1086,7 +1086,7 @@ func TestWorkStatusController_interpretHealth(t *testing.T) {
 			resourceHealth := c.interpretHealth(obj, work)
 			assert.Equalf(t, tt.expectedResourceHealth, resourceHealth, "expected resource health %v, got %v", tt.expectedResourceHealth, resourceHealth)
 
-			eventRecorder := c.EventRecorder.(*record.FakeRecorder)
+			eventRecorder := c.EventRecorder.(*events.FakeRecorder)
 			if tt.expectedEventReason == "" {
 				assert.Empty(t, eventRecorder.Events, "expected no events to get recorded")
 			} else {

@@ -33,7 +33,7 @@ import (
 	clientset "k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/clientcmd"
 	clientcmdapi "k8s.io/client-go/tools/clientcmd/api"
-	"k8s.io/client-go/tools/record"
+	"k8s.io/client-go/tools/events"
 	certutil "k8s.io/client-go/util/cert"
 	"k8s.io/client-go/util/keyutil"
 	"k8s.io/klog/v2"
@@ -64,7 +64,7 @@ const (
 type CertRotationController struct {
 	client.Client        // used to operate cluster resources in the control plane.
 	KubeClient           clientset.Interface
-	EventRecorder        record.EventRecorder
+	EventRecorder        events.EventRecorder
 	RESTMapper           meta.RESTMapper
 	ClusterClient        *util.ClusterClient
 	ClusterClientSetFunc func(string, client.Client, *util.ClientOption) (*util.ClusterClient, error)

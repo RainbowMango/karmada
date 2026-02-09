@@ -28,7 +28,7 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	utilerrors "k8s.io/apimachinery/pkg/util/errors"
 	"k8s.io/apimachinery/pkg/util/sets"
-	"k8s.io/client-go/tools/record"
+	"k8s.io/client-go/tools/events"
 	"k8s.io/klog/v2"
 	controllerruntime "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/builder"
@@ -58,7 +58,7 @@ const (
 // Controller is to sync Work.
 type Controller struct {
 	client.Client                // used to operate Work resources.
-	EventRecorder                record.EventRecorder
+	EventRecorder                events.EventRecorder
 	SkippedPropagatingNamespaces []*regexp.Regexp
 	OverrideManager              overridemanager.OverrideManager
 	RateLimiterOptions           ratelimiterflag.Options

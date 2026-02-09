@@ -38,7 +38,7 @@ import (
 	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/client-go/tools/cache"
-	"k8s.io/client-go/tools/record"
+	"k8s.io/client-go/tools/events"
 	"k8s.io/klog/v2"
 	controllerruntime "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/builder"
@@ -70,7 +70,7 @@ const ServiceExportControllerName = "service-export-controller"
 // and then asynchronously processes ServiceExport and EndpointSlice events.
 type ServiceExportController struct {
 	client.Client
-	EventRecorder               record.EventRecorder
+	EventRecorder               events.EventRecorder
 	RESTMapper                  meta.RESTMapper
 	Context                     context.Context
 	InformerManager             genericmanager.MultiClusterInformerManager

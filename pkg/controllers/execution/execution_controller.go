@@ -27,7 +27,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/util/errors"
-	"k8s.io/client-go/tools/record"
+	"k8s.io/client-go/tools/events"
 	"k8s.io/client-go/util/retry"
 	"k8s.io/klog/v2"
 	"k8s.io/utils/ptr"
@@ -41,7 +41,7 @@ import (
 	clusterv1alpha1 "github.com/karmada-io/karmada/pkg/apis/cluster/v1alpha1"
 	workv1alpha1 "github.com/karmada-io/karmada/pkg/apis/work/v1alpha1"
 	"github.com/karmada-io/karmada/pkg/detector"
-	"github.com/karmada-io/karmada/pkg/events"
+	kmdevents "github.com/karmada-io/karmada/pkg/events"
 	"github.com/karmada-io/karmada/pkg/metrics"
 	"github.com/karmada-io/karmada/pkg/sharedcli/ratelimiterflag"
 	"github.com/karmada-io/karmada/pkg/util"
@@ -68,7 +68,7 @@ const (
 // Controller is to sync Work.
 type Controller struct {
 	client.Client      // used to operate Work resources.
-	EventRecorder      record.EventRecorder
+	EventRecorder      events.EventRecorder
 	RESTMapper         meta.RESTMapper
 	ObjectWatcher      objectwatcher.ObjectWatcher
 	WorkPredicateFunc  predicate.Predicate
@@ -155,12 +155,12 @@ func (c *Controller) syncWork(ctx context.Context, clusterName string, work *wor
 	if err != nil {
 		msg := fmt.Sprintf("Failed to sync work(%s/%s) to cluster(%s), err: %v", work.Namespace, work.Name, clusterName, err)
 		klog.Error(msg)
-		c.EventRecorder.Event(work, corev1.EventTypeWarning, events.EventReasonSyncWorkloadFailed, msg)
+		c.EventRecorder.Eventf(work, nil, corev1.EventTypeWarning, kmdevents.EventReasonSyncWorkloadFailed, "", msg)
 		return controllerruntime.Result{}, err
 	}
 	msg := fmt.Sprintf("Sync work(%s/%s) to cluster(%s) successful.", work.Namespace, work.Name, clusterName)
 	klog.V(4).Info(msg)
-	c.EventRecorder.Event(work, corev1.EventTypeNormal, events.EventReasonSyncWorkloadSucceed, msg)
+	c.EventRecorder.Eventf(work, nil, corev1.EventTypeNormal, kmdevents.EventReasonSyncWorkloadSucceed, "", msg)
 	return controllerruntime.Result{}, nil
 }
 
@@ -280,11 +280,11 @@ func (c *Controller) syncToClusters(ctx context.Context, clusterName string, wor
 		})
 		if err != nil {
 			klog.ErrorS(err, "Failed to create or update resource in the given member cluster", "namespace", workload.GetNamespace(), "name", workload.GetName(), "cluster", clusterName)
-			c.eventf(workload, corev1.EventTypeWarning, events.EventReasonSyncWorkloadFailed, "Failed to create or update resource(%s) in member cluster(%s): %v", klog.KObj(workload), clusterName, err)
+			c.eventf(workload, corev1.EventTypeWarning, kmdevents.EventReasonSyncWorkloadFailed, "Failed to create or update resource(%s) in member cluster(%s): %v", klog.KObj(workload), clusterName, err)
 			errs = append(errs, err)
 			continue
 		}
-		c.eventf(workload, corev1.EventTypeNormal, events.EventReasonSyncWorkloadSucceed, "Successfully applied resource(%v/%v) to cluster %s", workload.GetNamespace(), workload.GetName(), clusterName)
+		c.eventf(workload, corev1.EventTypeNormal, kmdevents.EventReasonSyncWorkloadSucceed, "Successfully applied resource(%v/%v) to cluster %s", workload.GetNamespace(), workload.GetName(), clusterName)
 		syncSucceedNum++
 	}
 
@@ -361,7 +361,7 @@ func (c *Controller) updateWorkDispatchingConditionIfNeeded(ctx context.Context,
 		return err
 	}
 
-	c.EventRecorder.Eventf(work, corev1.EventTypeNormal, events.EventReasonWorkDispatching, newWorkDispatchingCondition.Message)
+	c.EventRecorder.Eventf(work, nil, corev1.EventTypeNormal, kmdevents.EventReasonWorkDispatching, "", newWorkDispatchingCondition.Message)
 	return nil
 }
 
@@ -394,5 +394,5 @@ func (c *Controller) eventf(object *unstructured.Unstructured, eventType, reason
 		klog.ErrorS(err, "Ignore event as failed to build event reference", "reason", reason, "kind", object.GetKind(), "object", klog.KObj(object))
 		return
 	}
-	c.EventRecorder.Eventf(ref, eventType, reason, messageFmt, args...)
+	c.EventRecorder.Eventf(ref, nil, eventType, reason, "", messageFmt, args...)
 }

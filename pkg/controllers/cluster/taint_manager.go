@@ -25,7 +25,7 @@ import (
 	"k8s.io/apimachinery/pkg/fields"
 	"k8s.io/apimachinery/pkg/types"
 	utilerrors "k8s.io/apimachinery/pkg/util/errors"
-	"k8s.io/client-go/tools/record"
+	"k8s.io/client-go/tools/events"
 	"k8s.io/klog/v2"
 	controllerruntime "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -50,7 +50,7 @@ const TaintManagerName = "taint-manager"
 // from Clusters tainted with NoExecute Taints.
 type NoExecuteTaintManager struct {
 	client.Client // used to operate Cluster resources.
-	EventRecorder record.EventRecorder
+	EventRecorder events.EventRecorder
 
 	ClusterTaintEvictionRetryFrequency time.Duration
 	ConcurrentReconciles               int

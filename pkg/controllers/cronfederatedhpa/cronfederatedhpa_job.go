@@ -29,7 +29,7 @@ import (
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/client-go/tools/record"
+	"k8s.io/client-go/tools/events"
 	"k8s.io/client-go/util/retry"
 	"k8s.io/klog/v2"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -44,7 +44,7 @@ import (
 // ScalingJob is a job to handle CronFederatedHPA.
 type ScalingJob struct {
 	client        client.Client
-	eventRecorder record.EventRecorder
+	eventRecorder events.EventRecorder
 	scheduler     *gocron.Scheduler
 
 	namespaceName types.NamespacedName
@@ -52,7 +52,7 @@ type ScalingJob struct {
 }
 
 // NewCronFederatedHPAJob creates a new CronFederatedHPAJob.
-func NewCronFederatedHPAJob(client client.Client, eventRecorder record.EventRecorder, scheduler *gocron.Scheduler,
+func NewCronFederatedHPAJob(client client.Client, eventRecorder events.EventRecorder, scheduler *gocron.Scheduler,
 	cronFHPA *autoscalingv1alpha1.CronFederatedHPA, rule autoscalingv1alpha1.CronFederatedHPARule) *ScalingJob {
 	return &ScalingJob{
 		client:        client,
@@ -96,13 +96,13 @@ func RunCronFederatedHPARule(c *ScalingJob) {
 	defer func() {
 		metrics.ObserveProcessCronFederatedHPARuleLatency(scaleErr, start)
 		if scaleErr != nil {
-			c.eventRecorder.Event(cronFHPA, corev1.EventTypeWarning, "ScaleFailed", scaleErr.Error())
+			c.eventRecorder.Eventf(cronFHPA, nil, corev1.EventTypeWarning, "ScaleFailed", "", scaleErr.Error())
 			err = c.addFailedExecutionHistory(cronFHPA, scaleErr.Error())
 		} else {
 			err = c.addSuccessExecutionHistory(cronFHPA, c.rule.TargetReplicas, c.rule.TargetMinReplicas, c.rule.TargetMaxReplicas)
 		}
 		if err != nil {
-			c.eventRecorder.Event(cronFHPA, corev1.EventTypeWarning, "UpdateStatusFailed", err.Error())
+			c.eventRecorder.Eventf(cronFHPA, nil, corev1.EventTypeWarning, "UpdateStatusFailed", "", err.Error())
 		}
 	}()
 

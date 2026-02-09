@@ -25,7 +25,7 @@ import (
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/client-go/rest"
-	"k8s.io/client-go/tools/record"
+	"k8s.io/client-go/tools/events"
 	"k8s.io/client-go/util/retry"
 	"k8s.io/klog/v2"
 	controllerruntime "sigs.k8s.io/controller-runtime"
@@ -57,7 +57,7 @@ const (
 type Controller struct {
 	client.Client
 	Config        *rest.Config
-	EventRecorder record.EventRecorder
+	EventRecorder events.EventRecorder
 }
 
 // Reconcile performs a full reconciliation for the object referred to by the Request.

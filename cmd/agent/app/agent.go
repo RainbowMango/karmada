@@ -322,7 +322,7 @@ func startClusterStatusController(ctx controllerscontext.Context) (bool, error) 
 	clusterStatusController := &status.ClusterStatusController{
 		Client:                            ctx.Mgr.GetClient(),
 		KubeClient:                        kubeclientset.NewForConfigOrDie(ctx.Mgr.GetConfig()),
-		EventRecorder:                     ctx.Mgr.GetEventRecorderFor(status.ControllerName),
+		EventRecorder:                     ctx.Mgr.GetEventRecorder(status.ControllerName),
 		PredicateFunc:                     helper.NewClusterPredicateOnAgent(ctx.Opts.ClusterName),
 		TypedInformerManager:              typedmanager.GetInstance(),
 		GenericInformerManager:            genericmanager.GetInstance(),
@@ -347,7 +347,7 @@ func startClusterStatusController(ctx controllerscontext.Context) (bool, error) 
 func startExecutionController(ctx controllerscontext.Context) (bool, error) {
 	executionController := &execution.Controller{
 		Client:             ctx.Mgr.GetClient(),
-		EventRecorder:      ctx.Mgr.GetEventRecorderFor(execution.ControllerName),
+		EventRecorder:      ctx.Mgr.GetEventRecorder(execution.ControllerName),
 		RESTMapper:         ctx.Mgr.GetRESTMapper(),
 		ObjectWatcher:      ctx.ObjectWatcher,
 		InformerManager:    genericmanager.GetInstance(),
@@ -362,7 +362,7 @@ func startExecutionController(ctx controllerscontext.Context) (bool, error) {
 func startWorkStatusController(ctx controllerscontext.Context) (bool, error) {
 	workStatusController := &status.WorkStatusController{
 		Client:                      ctx.Mgr.GetClient(),
-		EventRecorder:               ctx.Mgr.GetEventRecorderFor(status.WorkStatusControllerName),
+		EventRecorder:               ctx.Mgr.GetEventRecorder(status.WorkStatusControllerName),
 		RESTMapper:                  ctx.Mgr.GetRESTMapper(),
 		InformerManager:             genericmanager.GetInstance(),
 		Context:                     ctx.Context,
@@ -383,7 +383,7 @@ func startWorkStatusController(ctx controllerscontext.Context) (bool, error) {
 func startServiceExportController(ctx controllerscontext.Context) (bool, error) {
 	serviceExportController := &mcs.ServiceExportController{
 		Client:                      ctx.Mgr.GetClient(),
-		EventRecorder:               ctx.Mgr.GetEventRecorderFor(mcs.ServiceExportControllerName),
+		EventRecorder:               ctx.Mgr.GetEventRecorder(mcs.ServiceExportControllerName),
 		RESTMapper:                  ctx.Mgr.GetRESTMapper(),
 		InformerManager:             genericmanager.GetInstance(),
 		Context:                     ctx.Context,
@@ -430,7 +430,7 @@ func startCertRotationController(ctx controllerscontext.Context) (bool, error) {
 	certRotationController := &certificate.CertRotationController{
 		Client:                             ctx.Mgr.GetClient(),
 		KubeClient:                         kubeclientset.NewForConfigOrDie(ctx.Mgr.GetConfig()),
-		EventRecorder:                      ctx.Mgr.GetEventRecorderFor(certificate.CertRotationControllerName),
+		EventRecorder:                      ctx.Mgr.GetEventRecorder(certificate.CertRotationControllerName),
 		RESTMapper:                         ctx.Mgr.GetRESTMapper(),
 		ClusterClientSetFunc:               util.NewClusterClientSetForAgent,
 		PredicateFunc:                      helper.NewClusterPredicateOnAgent(ctx.Opts.ClusterName),

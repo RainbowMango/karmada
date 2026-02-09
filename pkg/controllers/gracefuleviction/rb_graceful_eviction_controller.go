@@ -23,7 +23,7 @@ import (
 
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/client-go/tools/record"
+	"k8s.io/client-go/tools/events"
 	"k8s.io/klog/v2"
 	controllerruntime "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/builder"
@@ -43,7 +43,7 @@ const RBGracefulEvictionControllerName = "resource-binding-graceful-eviction-con
 // RBGracefulEvictionController is to sync ResourceBinding.spec.gracefulEvictionTasks.
 type RBGracefulEvictionController struct {
 	client.Client
-	EventRecorder           record.EventRecorder
+	EventRecorder           events.EventRecorder
 	RateLimiterOptions      ratelimiterflag.Options
 	GracefulEvictionTimeout time.Duration
 }

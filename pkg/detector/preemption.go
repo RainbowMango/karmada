@@ -135,11 +135,11 @@ func (d *ResourceDetector) preemptPropagationPolicy(resourceTemplate *unstructur
 	defer func() {
 		metrics.CountPolicyPreemption(err)
 		if err != nil {
-			d.EventRecorder.Eventf(resourceTemplate, corev1.EventTypeWarning, events.EventReasonPreemptPolicyFailed,
+			d.EventRecorder.Eventf(resourceTemplate, nil, corev1.EventTypeWarning, events.EventReasonPreemptPolicyFailed, "",
 				"Propagation policy(%s/%s) failed to preempt propagation policy(%s/%s): %v", policy.Namespace, policy.Name, claimedPolicyNamespace, claimedPolicyName, err)
 			return
 		}
-		d.EventRecorder.Eventf(resourceTemplate, corev1.EventTypeNormal, events.EventReasonPreemptPolicySucceed,
+		d.EventRecorder.Eventf(resourceTemplate, nil, corev1.EventTypeNormal, events.EventReasonPreemptPolicySucceed, "",
 			"Propagation policy(%s/%s) preempted propagation policy(%s/%s) successfully", policy.Namespace, policy.Name, claimedPolicyNamespace, claimedPolicyName)
 	}()
 
@@ -163,11 +163,11 @@ func (d *ResourceDetector) preemptClusterPropagationPolicyDirectly(resourceTempl
 	defer func() {
 		metrics.CountPolicyPreemption(err)
 		if err != nil {
-			d.EventRecorder.Eventf(resourceTemplate, corev1.EventTypeWarning, events.EventReasonPreemptPolicyFailed,
+			d.EventRecorder.Eventf(resourceTemplate, nil, corev1.EventTypeWarning, events.EventReasonPreemptPolicyFailed, "",
 				"Propagation policy(%s/%s) failed to preempt cluster propagation policy(%s): %v", policy.Namespace, policy.Name, claimedPolicyName, err)
 			return
 		}
-		d.EventRecorder.Eventf(resourceTemplate, corev1.EventTypeNormal, events.EventReasonPreemptPolicySucceed,
+		d.EventRecorder.Eventf(resourceTemplate, nil, corev1.EventTypeNormal, events.EventReasonPreemptPolicySucceed, "",
 			"Propagation policy(%s/%s) preempted cluster propagation policy(%s) successfully", policy.Namespace, policy.Name, claimedPolicyName)
 	}()
 
@@ -207,11 +207,11 @@ func (d *ResourceDetector) preemptClusterPropagationPolicy(resourceTemplate *uns
 	defer func() {
 		metrics.CountPolicyPreemption(err)
 		if err != nil {
-			d.EventRecorder.Eventf(resourceTemplate, corev1.EventTypeWarning, events.EventReasonPreemptPolicyFailed,
+			d.EventRecorder.Eventf(resourceTemplate, nil, corev1.EventTypeWarning, events.EventReasonPreemptPolicyFailed, "",
 				"Cluster propagation policy(%s) failed to preempt cluster propagation policy(%s): %v", policy.Name, claimedPolicyName, err)
 			return
 		}
-		d.EventRecorder.Eventf(resourceTemplate, corev1.EventTypeNormal, events.EventReasonPreemptPolicySucceed,
+		d.EventRecorder.Eventf(resourceTemplate, nil, corev1.EventTypeNormal, events.EventReasonPreemptPolicySucceed, "",
 			"Cluster propagation policy(%s) preempted cluster propagation policy(%s) successfully", policy.Name, claimedPolicyName)
 	}()
 

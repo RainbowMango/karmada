@@ -32,7 +32,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	dynamicfake "k8s.io/client-go/dynamic/fake"
-	"k8s.io/client-go/tools/record"
+	"k8s.io/client-go/tools/events"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 
@@ -1017,7 +1017,7 @@ func TestApplyPolicy(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			scheme := setupTestScheme()
 			fakeClient := fake.NewClientBuilder().WithScheme(scheme).WithRuntimeObjects(tt.object).Build()
-			fakeRecorder := record.NewFakeRecorder(10)
+			fakeRecorder := events.NewFakeRecorder(10)
 			fakeDynamicClient := dynamicfake.NewSimpleDynamicClient(scheme)
 
 			d := &ResourceDetector{
@@ -1148,7 +1148,7 @@ func TestApplyClusterPolicy(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			scheme := setupTestScheme()
 			fakeClient := fake.NewClientBuilder().WithScheme(scheme).Build()
-			fakeRecorder := record.NewFakeRecorder(10)
+			fakeRecorder := events.NewFakeRecorder(10)
 			fakeDynamicClient := dynamicfake.NewSimpleDynamicClient(scheme)
 
 			d := &ResourceDetector{

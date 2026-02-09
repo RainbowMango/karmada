@@ -26,7 +26,7 @@ import (
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/sets"
-	"k8s.io/client-go/tools/record"
+	"k8s.io/client-go/tools/events"
 	"k8s.io/klog/v2"
 	controllerruntime "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/builder"
@@ -39,7 +39,7 @@ import (
 
 	clusterv1alpha1 "github.com/karmada-io/karmada/pkg/apis/cluster/v1alpha1"
 	"github.com/karmada-io/karmada/pkg/controllers/ctrlutil"
-	"github.com/karmada-io/karmada/pkg/events"
+	kmdevents "github.com/karmada-io/karmada/pkg/events"
 	"github.com/karmada-io/karmada/pkg/sharedcli/ratelimiterflag"
 	"github.com/karmada-io/karmada/pkg/util"
 	"github.com/karmada-io/karmada/pkg/util/helper"
@@ -61,7 +61,7 @@ const (
 // Controller is to sync impersonation config to member clusters for unified authentication.
 type Controller struct {
 	client.Client      // used to operate Cluster resources.
-	EventRecorder      record.EventRecorder
+	EventRecorder      events.EventRecorder
 	RateLimiterOptions ratelimiterflag.Options
 }
 
@@ -93,10 +93,10 @@ func (c *Controller) Reconcile(ctx context.Context, req controllerruntime.Reques
 	err := c.syncImpersonationConfig(ctx, cluster)
 	if err != nil {
 		klog.ErrorS(err, "Failed to sync impersonation config", "cluster", cluster.Name)
-		c.EventRecorder.Eventf(cluster, corev1.EventTypeWarning, events.EventReasonSyncImpersonationConfigFailed, err.Error())
+		c.EventRecorder.Eventf(cluster, nil, corev1.EventTypeWarning, kmdevents.EventReasonSyncImpersonationConfigFailed, "", err.Error())
 		return controllerruntime.Result{}, err
 	}
-	c.EventRecorder.Eventf(cluster, corev1.EventTypeNormal, events.EventReasonSyncImpersonationConfigSucceed, "Sync impersonation config succeed.")
+	c.EventRecorder.Eventf(cluster, nil, corev1.EventTypeNormal, kmdevents.EventReasonSyncImpersonationConfigSucceed, "", "Sync impersonation config succeed.")
 
 	return controllerruntime.Result{}, nil
 }

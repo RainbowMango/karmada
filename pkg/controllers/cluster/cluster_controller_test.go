@@ -26,7 +26,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/client-go/tools/record"
+	"k8s.io/client-go/tools/events"
 	controllerruntime "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
@@ -62,7 +62,7 @@ func newClusterController() *Controller {
 		WithStatusSubresource(&clusterv1alpha1.Cluster{}).Build()
 	return &Controller{
 		Client:                    client,
-		EventRecorder:             record.NewFakeRecorder(1024),
+		EventRecorder:             events.NewFakeRecorder(1024),
 		clusterHealthMap:          newClusterHealthMap(),
 		ClusterMonitorGracePeriod: 40 * time.Second,
 	}

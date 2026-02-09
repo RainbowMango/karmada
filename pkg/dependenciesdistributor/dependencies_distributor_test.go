@@ -35,7 +35,7 @@ import (
 	"k8s.io/client-go/dynamic"
 	dynamicfake "k8s.io/client-go/dynamic/fake"
 	"k8s.io/client-go/kubernetes/scheme"
-	"k8s.io/client-go/tools/record"
+	"k8s.io/client-go/tools/events"
 	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
@@ -44,7 +44,7 @@ import (
 	configv1alpha1 "github.com/karmada-io/karmada/pkg/apis/config/v1alpha1"
 	policyv1alpha1 "github.com/karmada-io/karmada/pkg/apis/policy/v1alpha1"
 	workv1alpha2 "github.com/karmada-io/karmada/pkg/apis/work/v1alpha2"
-	"github.com/karmada-io/karmada/pkg/events"
+	kmdevents "github.com/karmada-io/karmada/pkg/events"
 	"github.com/karmada-io/karmada/pkg/util"
 	"github.com/karmada-io/karmada/pkg/util/fedinformer/genericmanager"
 	"github.com/karmada-io/karmada/pkg/util/fedinformer/keys"
@@ -2386,7 +2386,7 @@ func Test_listAttachedBindings(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			d := &DependenciesDistributor{
 				Client:        tt.setupClient(),
-				EventRecorder: record.NewFakeRecorder(10),
+				EventRecorder: events.NewFakeRecorder(10),
 			}
 			gotBindings, err := d.listAttachedBindings(tt.bindingID, tt.bindingNamespace, tt.bindingName)
 			if (err != nil) != tt.wantErr {
@@ -3345,7 +3345,7 @@ func Test_createOrUpdateAttachedBinding(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			d := &DependenciesDistributor{
 				Client:        tt.setupClient(),
-				EventRecorder: record.NewFakeRecorder(100),
+				EventRecorder: events.NewFakeRecorder(100),
 			}
 			err := d.createOrUpdateAttachedBinding(context.TODO(), tt.attachedBinding)
 			if (err != nil) != tt.wantErr {
@@ -3419,7 +3419,7 @@ func Test_createOrUpdateAttachedBinding_emitsConflictEvent(t *testing.T) {
 		},
 	}
 
-	fakeRec := record.NewFakeRecorder(10)
+	fakeRec := events.NewFakeRecorder(10)
 	d := &DependenciesDistributor{
 		Client:        fake.NewClientBuilder().WithScheme(Scheme).WithObjects(exist, rb1, rb2).Build(),
 		EventRecorder: fakeRec,
@@ -3434,8 +3434,8 @@ func Test_createOrUpdateAttachedBinding_emitsConflictEvent(t *testing.T) {
 		if !strings.Contains(e, corev1.EventTypeWarning) {
 			t.Fatalf("expected Warning event, got %q", e)
 		}
-		if !strings.Contains(e, events.EventReasonDependencyPolicyConflict) {
-			t.Fatalf("expected reason %q in event, got %q", events.EventReasonDependencyPolicyConflict, e)
+		if !strings.Contains(e, kmdevents.EventReasonDependencyPolicyConflict) {
+			t.Fatalf("expected reason %q in event, got %q", kmdevents.EventReasonDependencyPolicyConflict, e)
 		}
 		if !strings.Contains(e, "ConflictResolution conflicted (Overwrite vs Abort)") {
 			t.Fatalf("expected ConflictResolution conflicted hint in event, got %q", e)

@@ -25,7 +25,7 @@ import (
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/client-go/tools/record"
+	"k8s.io/client-go/tools/events"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 
@@ -48,7 +48,7 @@ func setupTest(t *testing.T, objs ...runtime.Object) (client.Client, *SyncContro
 	fakeClient := fake.NewClientBuilder().WithScheme(scheme).WithRuntimeObjects(objs...).Build()
 	controller := &SyncController{
 		Client:        fakeClient,
-		EventRecorder: record.NewFakeRecorder(100),
+		EventRecorder: events.NewFakeRecorder(100),
 	}
 	return fakeClient, controller
 }

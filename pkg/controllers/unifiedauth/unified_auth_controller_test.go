@@ -27,7 +27,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/client-go/tools/record"
+	"k8s.io/client-go/tools/events"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
@@ -241,7 +241,7 @@ func TestController_generateRequestsFromClusterRole(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			c := &Controller{
 				Client:        fake.NewClientBuilder().WithScheme(gclient.NewSchema()).WithObjects(cluster1, cluster2, cluster3).Build(),
-				EventRecorder: record.NewFakeRecorder(1024),
+				EventRecorder: events.NewFakeRecorder(1024),
 			}
 			if got := c.generateRequestsFromClusterRole(context.Background(), tt.args.clusterRole); !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("generateRequestsFromClusterRole() = %v, want %v", got, tt.want)
@@ -288,7 +288,7 @@ func TestController_buildImpersonationClusterRole(t *testing.T) {
 
 			c := &Controller{
 				Client:        fake.NewClientBuilder().WithScheme(s).WithObjects(tt.cluster).Build(),
-				EventRecorder: record.NewFakeRecorder(1024),
+				EventRecorder: events.NewFakeRecorder(1024),
 			}
 
 			err := c.buildImpersonationClusterRole(context.Background(), tt.cluster, tt.rules)
@@ -343,7 +343,7 @@ func TestController_buildImpersonationClusterRoleBinding(t *testing.T) {
 
 			c := &Controller{
 				Client:        fake.NewClientBuilder().WithScheme(s).WithObjects(tt.cluster).Build(),
-				EventRecorder: record.NewFakeRecorder(1024),
+				EventRecorder: events.NewFakeRecorder(1024),
 			}
 
 			if tt.expectPanic {
@@ -422,7 +422,7 @@ func TestController_Reconcile(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			s := setupTestScheme()
 
-			fakeRecorder := record.NewFakeRecorder(10)
+			fakeRecorder := events.NewFakeRecorder(10)
 			c := &Controller{
 				Client:        fake.NewClientBuilder().WithScheme(s).WithObjects(tt.cluster).Build(),
 				EventRecorder: fakeRecorder,
@@ -524,7 +524,7 @@ func TestController_syncImpersonationConfig(t *testing.T) {
 
 			c := &Controller{
 				Client:        builder.Build(),
-				EventRecorder: record.NewFakeRecorder(10),
+				EventRecorder: events.NewFakeRecorder(10),
 			}
 
 			err := c.syncImpersonationConfig(context.Background(), tt.cluster)
@@ -605,7 +605,7 @@ func TestController_newClusterRoleMapFunc(t *testing.T) {
 
 			c := &Controller{
 				Client:        fakeClient,
-				EventRecorder: record.NewFakeRecorder(1024),
+				EventRecorder: events.NewFakeRecorder(1024),
 			}
 
 			mapFunc := c.newClusterRoleMapFunc()
@@ -676,7 +676,7 @@ func TestController_newClusterRoleBindingMapFunc(t *testing.T) {
 
 			c := &Controller{
 				Client:        fakeClient,
-				EventRecorder: record.NewFakeRecorder(1024),
+				EventRecorder: events.NewFakeRecorder(1024),
 			}
 
 			mapFunc := c.newClusterRoleBindingMapFunc()

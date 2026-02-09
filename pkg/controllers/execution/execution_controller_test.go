@@ -32,7 +32,7 @@ import (
 	"k8s.io/apimachinery/pkg/util/uuid"
 	dynamicfake "k8s.io/client-go/dynamic/fake"
 	"k8s.io/client-go/kubernetes/scheme"
-	"k8s.io/client-go/tools/record"
+	"k8s.io/client-go/tools/events"
 	"k8s.io/utils/ptr"
 	controllerruntime "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -41,7 +41,7 @@ import (
 
 	clusterv1alpha1 "github.com/karmada-io/karmada/pkg/apis/cluster/v1alpha1"
 	workv1alpha1 "github.com/karmada-io/karmada/pkg/apis/work/v1alpha1"
-	"github.com/karmada-io/karmada/pkg/events"
+	kmdevents "github.com/karmada-io/karmada/pkg/events"
 	"github.com/karmada-io/karmada/pkg/resourceinterpreter"
 	"github.com/karmada-io/karmada/pkg/resourceinterpreter/default/native"
 	"github.com/karmada-io/karmada/pkg/util"
@@ -119,7 +119,7 @@ func TestExecutionController_Reconcile(t *testing.T) {
 			name:               "work dispatching is suspended, adds event message",
 			ns:                 "karmada-es-cluster",
 			expectRes:          controllerruntime.Result{},
-			expectEventMessage: fmt.Sprintf("%s %s %s", corev1.EventTypeNormal, events.EventReasonWorkDispatching, WorkSuspendDispatchingConditionMessage),
+			expectEventMessage: fmt.Sprintf("%s %s %s", corev1.EventTypeNormal, kmdevents.EventReasonWorkDispatching, WorkSuspendDispatchingConditionMessage),
 			existErr:           false,
 			work: newWork(func(w *workv1alpha1.Work) {
 				w.Spec.SuspendDispatching = ptr.To(true)
@@ -205,7 +205,7 @@ func TestExecutionController_Reconcile(t *testing.T) {
 				},
 			}
 
-			eventRecorder := record.NewFakeRecorder(1)
+			eventRecorder := events.NewFakeRecorder(1)
 			c := newController(tt.work, eventRecorder)
 			res, err := c.Reconcile(context.Background(), req)
 			assert.Equal(t, tt.expectRes, res)
@@ -240,7 +240,7 @@ func TestExecutionController_Reconcile(t *testing.T) {
 	}
 }
 
-func newController(work *workv1alpha1.Work, recorder *record.FakeRecorder) Controller {
+func newController(work *workv1alpha1.Work, recorder *events.FakeRecorder) Controller {
 	cluster := newCluster(clusterName, clusterv1alpha1.ClusterConditionReady, metav1.ConditionTrue)
 	pod := testhelper.NewPod(podNamespace, podName)
 	pod.SetLabels(map[string]string{util.ManagedByKarmadaLabel: util.ManagedByKarmadaLabelValue})

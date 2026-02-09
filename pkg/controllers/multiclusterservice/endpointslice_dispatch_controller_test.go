@@ -30,7 +30,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/client-go/tools/record"
+	"k8s.io/client-go/tools/events"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
@@ -91,7 +91,7 @@ func TestUpdateEndpointSliceDispatched(t *testing.T) {
 
 			c := &EndpointsliceDispatchController{
 				Client:        mockClient,
-				EventRecorder: record.NewFakeRecorder(100),
+				EventRecorder: events.NewFakeRecorder(100),
 			}
 
 			err := c.updateEndpointSliceDispatched(context.Background(), tt.mcs, tt.status, tt.reason, tt.message)
@@ -797,7 +797,7 @@ func setupController(objs ...client.Object) *EndpointsliceDispatchController {
 	scheme := setupSchemeEndpointDispatch()
 	return &EndpointsliceDispatchController{
 		Client:        fake.NewClientBuilder().WithScheme(scheme).WithObjects(objs...).Build(),
-		EventRecorder: record.NewFakeRecorder(100),
+		EventRecorder: events.NewFakeRecorder(100),
 	}
 }
 
@@ -883,6 +883,9 @@ type MockStatusWriter struct {
 	mock.Mock
 }
 
+// Check if our MockStatusWriter implements necessary interfaces
+var _ client.SubResourceWriter = &MockStatusWriter{}
+
 func (m *MockStatusWriter) Create(ctx context.Context, obj client.Object, subResource client.Object, opts ...client.SubResourceCreateOption) error {
 	args := m.Called(ctx, obj, subResource, opts)
 	return args.Error(0)
@@ -895,6 +898,11 @@ func (m *MockStatusWriter) Update(ctx context.Context, obj client.Object, opts .
 
 func (m *MockStatusWriter) Patch(ctx context.Context, obj client.Object, patch client.Patch, opts ...client.SubResourcePatchOption) error {
 	args := m.Called(ctx, obj, patch, opts)
+	return args.Error(0)
+}
+
+func (m *MockStatusWriter) Apply(ctx context.Context, obj runtime.ApplyConfiguration, opts ...client.SubResourceApplyOption) error {
+	args := m.Called(ctx, obj, opts)
 	return args.Error(0)
 }
 

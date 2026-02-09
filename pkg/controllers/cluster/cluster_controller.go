@@ -33,7 +33,7 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	utilerrors "k8s.io/apimachinery/pkg/util/errors"
 	"k8s.io/apimachinery/pkg/util/wait"
-	"k8s.io/client-go/tools/record"
+	"k8s.io/client-go/tools/events"
 	"k8s.io/klog/v2"
 	controllerruntime "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -43,7 +43,7 @@ import (
 	clusterv1alpha1 "github.com/karmada-io/karmada/pkg/apis/cluster/v1alpha1"
 	workv1alpha1 "github.com/karmada-io/karmada/pkg/apis/work/v1alpha1"
 	workv1alpha2 "github.com/karmada-io/karmada/pkg/apis/work/v1alpha2"
-	"github.com/karmada-io/karmada/pkg/events"
+	kmdevents "github.com/karmada-io/karmada/pkg/events"
 	"github.com/karmada-io/karmada/pkg/sharedcli/ratelimiterflag"
 	"github.com/karmada-io/karmada/pkg/util"
 	utilhelper "github.com/karmada-io/karmada/pkg/util/helper"
@@ -80,7 +80,7 @@ var (
 // Controller is to sync Cluster.
 type Controller struct {
 	client.Client // used to operate Cluster resources.
-	EventRecorder record.EventRecorder
+	EventRecorder events.EventRecorder
 
 	// ClusterMonitorPeriod represents cluster-controller monitoring period, i.e. how often does
 	// cluster-controller check cluster health signal posted from cluster-status-controller.
@@ -203,7 +203,7 @@ func (c *Controller) syncCluster(ctx context.Context, cluster *clusterv1alpha1.C
 	// create execution space
 	err := c.createExecutionSpace(ctx, cluster)
 	if err != nil {
-		c.EventRecorder.Event(cluster, corev1.EventTypeWarning, events.EventReasonCreateExecutionSpaceFailed, err.Error())
+		c.EventRecorder.Eventf(cluster, nil, corev1.EventTypeWarning, kmdevents.EventReasonCreateExecutionSpaceFailed, "", err.Error())
 		return controllerruntime.Result{}, err
 	}
 
@@ -220,11 +220,11 @@ func (c *Controller) syncCluster(ctx context.Context, cluster *clusterv1alpha1.C
 func (c *Controller) removeCluster(ctx context.Context, cluster *clusterv1alpha1.Cluster) (controllerruntime.Result, error) {
 	if err := c.removeExecutionSpace(ctx, cluster); err != nil {
 		klog.ErrorS(err, "Failed to remove execution space", "cluster", cluster.Name)
-		c.EventRecorder.Event(cluster, corev1.EventTypeWarning, events.EventReasonRemoveExecutionSpaceFailed, err.Error())
+		c.EventRecorder.Eventf(cluster, nil, corev1.EventTypeWarning, kmdevents.EventReasonRemoveExecutionSpaceFailed, "", err.Error())
 		return controllerruntime.Result{}, err
 	}
 	msg := fmt.Sprintf("Removed execution space for cluster(%s).", cluster.Name)
-	c.EventRecorder.Event(cluster, corev1.EventTypeNormal, events.EventReasonRemoveExecutionSpaceSucceed, msg)
+	c.EventRecorder.Eventf(cluster, nil, corev1.EventTypeNormal, kmdevents.EventReasonRemoveExecutionSpaceSucceed, "", msg)
 
 	if exist, err := c.ExecutionSpaceExistForCluster(ctx, cluster.Name); err != nil {
 		klog.ErrorS(err, "Failed to check execution space existence", "cluster", cluster.Name)
@@ -406,7 +406,7 @@ func (c *Controller) createExecutionSpace(ctx context.Context, cluster *clusterv
 		}
 		msg := fmt.Sprintf("Created execution space(%s) for cluster(%s).", executionSpaceName, cluster.Name)
 		klog.V(2).InfoS(msg)
-		c.EventRecorder.Event(cluster, corev1.EventTypeNormal, events.EventReasonCreateExecutionSpaceSucceed, msg)
+		c.EventRecorder.Eventf(cluster, nil, corev1.EventTypeNormal, kmdevents.EventReasonCreateExecutionSpaceSucceed, "", msg)
 	}
 
 	return nil
@@ -609,10 +609,10 @@ func (c *Controller) updateClusterTaints(ctx context.Context, taintsToAdd, taint
 	cluster.Spec.Taints = taints
 	err := c.Client.Update(ctx, cluster)
 	if err != nil {
-		c.EventRecorder.Event(cluster, corev1.EventTypeWarning, events.EventReasonTaintClusterFailed, err.Error())
+		c.EventRecorder.Eventf(cluster, nil, corev1.EventTypeWarning, kmdevents.EventReasonTaintClusterFailed, "", err.Error())
 		return err
 	}
 	msg := fmt.Sprintf("Taint cluster succeed: %s.", utilhelper.GenerateTaintsMessage(taints))
-	c.EventRecorder.Event(cluster, corev1.EventTypeNormal, events.EventReasonTaintClusterSucceed, msg)
+	c.EventRecorder.Eventf(cluster, nil, corev1.EventTypeNormal, kmdevents.EventReasonTaintClusterSucceed, "", msg)
 	return nil
 }

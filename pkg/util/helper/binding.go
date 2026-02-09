@@ -32,14 +32,14 @@ import (
 	"k8s.io/apimachinery/pkg/util/errors"
 	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/client-go/dynamic"
-	"k8s.io/client-go/tools/record"
+	"k8s.io/client-go/tools/events"
 	"k8s.io/klog/v2"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	policyv1alpha1 "github.com/karmada-io/karmada/pkg/apis/policy/v1alpha1"
 	workv1alpha1 "github.com/karmada-io/karmada/pkg/apis/work/v1alpha1"
 	workv1alpha2 "github.com/karmada-io/karmada/pkg/apis/work/v1alpha2"
-	"github.com/karmada-io/karmada/pkg/events"
+	kmdevents "github.com/karmada-io/karmada/pkg/events"
 	"github.com/karmada-io/karmada/pkg/features"
 	"github.com/karmada-io/karmada/pkg/util"
 	"github.com/karmada-io/karmada/pkg/util/fedinformer/genericmanager"
@@ -481,7 +481,7 @@ func ConstructClusterWideKey(resource workv1alpha2.ObjectReference) (keys.Cluste
 }
 
 // EmitClusterEvictionEventForResourceBinding records the eviction event for resourceBinding and its objectReference.
-func EmitClusterEvictionEventForResourceBinding(binding *workv1alpha2.ResourceBinding, cluster string, eventRecorder record.EventRecorder, err error) {
+func EmitClusterEvictionEventForResourceBinding(binding *workv1alpha2.ResourceBinding, cluster string, eventRecorder events.EventRecorder, err error) {
 	if binding == nil {
 		return
 	}
@@ -495,16 +495,16 @@ func EmitClusterEvictionEventForResourceBinding(binding *workv1alpha2.ResourceBi
 	}
 
 	if err != nil {
-		eventRecorder.Eventf(binding, corev1.EventTypeWarning, events.EventReasonEvictWorkloadFromClusterFailed, "Evict from cluster %s failed.", cluster)
-		eventRecorder.Eventf(ref, corev1.EventTypeWarning, events.EventReasonEvictWorkloadFromClusterFailed, "Evict from cluster %s failed.", cluster)
+		eventRecorder.Eventf(binding, nil, corev1.EventTypeWarning, kmdevents.EventReasonEvictWorkloadFromClusterFailed, "", "Evict from cluster %s failed.", cluster)
+		eventRecorder.Eventf(ref, nil, corev1.EventTypeWarning, kmdevents.EventReasonEvictWorkloadFromClusterFailed, "", "Evict from cluster %s failed.", cluster)
 	} else {
-		eventRecorder.Eventf(binding, corev1.EventTypeNormal, events.EventReasonEvictWorkloadFromClusterSucceed, "Evict from cluster %s succeed.", cluster)
-		eventRecorder.Eventf(ref, corev1.EventTypeNormal, events.EventReasonEvictWorkloadFromClusterSucceed, "Evict from cluster %s succeed.", cluster)
+		eventRecorder.Eventf(binding, nil, corev1.EventTypeNormal, kmdevents.EventReasonEvictWorkloadFromClusterSucceed, "", "Evict from cluster %s succeed.", cluster)
+		eventRecorder.Eventf(ref, nil, corev1.EventTypeNormal, kmdevents.EventReasonEvictWorkloadFromClusterSucceed, "", "Evict from cluster %s succeed.", cluster)
 	}
 }
 
 // EmitClusterEvictionEventForClusterResourceBinding records the eviction event for clusterResourceBinding and its objectReference.
-func EmitClusterEvictionEventForClusterResourceBinding(binding *workv1alpha2.ClusterResourceBinding, cluster string, eventRecorder record.EventRecorder, err error) {
+func EmitClusterEvictionEventForClusterResourceBinding(binding *workv1alpha2.ClusterResourceBinding, cluster string, eventRecorder events.EventRecorder, err error) {
 	if binding == nil {
 		return
 	}
@@ -518,11 +518,11 @@ func EmitClusterEvictionEventForClusterResourceBinding(binding *workv1alpha2.Clu
 	}
 
 	if err != nil {
-		eventRecorder.Eventf(binding, corev1.EventTypeWarning, events.EventReasonEvictWorkloadFromClusterFailed, "Evict from cluster %s failed.", cluster)
-		eventRecorder.Eventf(ref, corev1.EventTypeWarning, events.EventReasonEvictWorkloadFromClusterFailed, "Evict from cluster %s failed.", cluster)
+		eventRecorder.Eventf(binding, nil, corev1.EventTypeWarning, kmdevents.EventReasonEvictWorkloadFromClusterFailed, "", "Evict from cluster %s failed.", cluster)
+		eventRecorder.Eventf(ref, nil, corev1.EventTypeWarning, kmdevents.EventReasonEvictWorkloadFromClusterFailed, "", "Evict from cluster %s failed.", cluster)
 	} else {
-		eventRecorder.Eventf(binding, corev1.EventTypeNormal, events.EventReasonEvictWorkloadFromClusterSucceed, "Evict from cluster %s succeed.", cluster)
-		eventRecorder.Eventf(ref, corev1.EventTypeNormal, events.EventReasonEvictWorkloadFromClusterSucceed, "Evict from cluster %s succeed.", cluster)
+		eventRecorder.Eventf(binding, nil, corev1.EventTypeNormal, kmdevents.EventReasonEvictWorkloadFromClusterSucceed, "", "Evict from cluster %s succeed.", cluster)
+		eventRecorder.Eventf(ref, nil, corev1.EventTypeNormal, kmdevents.EventReasonEvictWorkloadFromClusterSucceed, "", "Evict from cluster %s succeed.", cluster)
 	}
 }
 

@@ -29,7 +29,7 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/client-go/kubernetes/scheme"
-	"k8s.io/client-go/tools/record"
+	"k8s.io/client-go/tools/events"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
@@ -1000,7 +1000,7 @@ func newFakeController(objs ...runtime.Object) *MCSController {
 	fakeClient := fake.NewClientBuilder().WithScheme(s).WithRuntimeObjects(objs...).Build()
 	return &MCSController{
 		Client:        fakeClient,
-		EventRecorder: record.NewFakeRecorder(100),
+		EventRecorder: events.NewFakeRecorder(100),
 	}
 }
 

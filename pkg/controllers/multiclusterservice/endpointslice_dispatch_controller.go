@@ -27,7 +27,7 @@ import (
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/client-go/tools/record"
+	"k8s.io/client-go/tools/events"
 	"k8s.io/client-go/util/retry"
 	"k8s.io/klog/v2"
 	controllerruntime "sigs.k8s.io/controller-runtime"
@@ -44,7 +44,7 @@ import (
 	networkingv1alpha1 "github.com/karmada-io/karmada/pkg/apis/networking/v1alpha1"
 	workv1alpha1 "github.com/karmada-io/karmada/pkg/apis/work/v1alpha1"
 	"github.com/karmada-io/karmada/pkg/controllers/ctrlutil"
-	"github.com/karmada-io/karmada/pkg/events"
+	kmdevents "github.com/karmada-io/karmada/pkg/events"
 	"github.com/karmada-io/karmada/pkg/sharedcli/ratelimiterflag"
 	"github.com/karmada-io/karmada/pkg/util"
 	"github.com/karmada-io/karmada/pkg/util/fedinformer/genericmanager"
@@ -58,7 +58,7 @@ const EndpointsliceDispatchControllerName = "endpointslice-dispatch-controller"
 // EndpointsliceDispatchController will reconcile a MultiClusterService object
 type EndpointsliceDispatchController struct {
 	client.Client
-	EventRecorder      record.EventRecorder
+	EventRecorder      events.EventRecorder
 	RESTMapper         meta.RESTMapper
 	InformerManager    genericmanager.MultiClusterInformerManager
 	RateLimiterOptions ratelimiterflag.Options
@@ -103,11 +103,11 @@ func (c *EndpointsliceDispatchController) Reconcile(ctx context.Context, req con
 	defer func() {
 		if err != nil {
 			_ = c.updateEndpointSliceDispatched(ctx, mcs, metav1.ConditionFalse, "EndpointSliceDispatchedFailed", err.Error())
-			c.EventRecorder.Eventf(mcs, corev1.EventTypeWarning, events.EventReasonDispatchEndpointSliceFailed, err.Error())
+			c.EventRecorder.Eventf(mcs, nil, corev1.EventTypeWarning, kmdevents.EventReasonDispatchEndpointSliceFailed, "", err.Error())
 			return
 		}
 		_ = c.updateEndpointSliceDispatched(ctx, mcs, metav1.ConditionTrue, "EndpointSliceDispatchedSucceed", "EndpointSlice are dispatched successfully")
-		c.EventRecorder.Eventf(mcs, corev1.EventTypeNormal, events.EventReasonDispatchEndpointSliceSucceed, "EndpointSlice are dispatched successfully")
+		c.EventRecorder.Eventf(mcs, nil, corev1.EventTypeNormal, kmdevents.EventReasonDispatchEndpointSliceSucceed, "", "EndpointSlice are dispatched successfully")
 	}()
 
 	if err = c.cleanOrphanDispatchedEndpointSlice(ctx, mcs); err != nil {
@@ -327,20 +327,19 @@ func (c *EndpointsliceDispatchController) dispatchEndpointSlice(ctx context.Cont
 		clusterObj, err := util.GetCluster(c.Client, clusterName)
 		if err != nil {
 			if apierrors.IsNotFound(err) {
-				c.EventRecorder.Eventf(mcs, corev1.EventTypeWarning, events.EventReasonClusterNotFound, "Consumer cluster %s is not found", clusterName)
+				c.EventRecorder.Eventf(mcs, nil, corev1.EventTypeWarning, kmdevents.EventReasonClusterNotFound, "", "Consumer cluster %s is not found", clusterName)
 				continue
 			}
 			klog.ErrorS(err, "Failed to get cluster", "cluster", clusterName)
 			return err
 		}
 		if !util.IsClusterReady(&clusterObj.Status) {
-			c.EventRecorder.Eventf(mcs, corev1.EventTypeWarning, events.EventReasonSyncServiceFailed,
-				"Consumer cluster %s is not ready, skip to propagate EndpointSlice", clusterName)
+			c.EventRecorder.Eventf(mcs, nil, corev1.EventTypeWarning, kmdevents.EventReasonSyncServiceFailed, "", "Consumer cluster %s is not ready, skip to propagate EndpointSlice", clusterName)
 			continue
 		}
 
 		if clusterObj.APIEnablement(util.EndpointSliceGVK) == clusterv1alpha1.APIDisabled {
-			c.EventRecorder.Eventf(mcs, corev1.EventTypeWarning, events.EventReasonAPIIncompatible, "Consumer cluster %s does not support EndpointSlice", clusterName)
+			c.EventRecorder.Eventf(mcs, nil, corev1.EventTypeWarning, kmdevents.EventReasonAPIIncompatible, "", "Consumer cluster %s does not support EndpointSlice", clusterName)
 			continue
 		}
 
