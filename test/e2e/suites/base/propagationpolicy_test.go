@@ -1239,6 +1239,8 @@ var _ = ginkgo.Describe("Suspension: PropagationPolicy testing", func() {
 			esName := names.GenerateExecutionSpaceName(targetMember)
 			framework.WaitEventFitWith(kubeClient, esName, workName,
 				func(event corev1.Event) bool {
+					klog.Infof("grabed event, reason: %s, message: %s", event.Reason, event.Message)
+					klog.Infof("expect event, reason: %s, message: %s", events.EventReasonWorkDispatching, execution.WorkSuspendDispatchingConditionMessage)
 					return event.Reason == events.EventReasonWorkDispatching &&
 						event.Message == execution.WorkSuspendDispatchingConditionMessage
 				})
