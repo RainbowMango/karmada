@@ -361,7 +361,7 @@ func (c *Controller) updateWorkDispatchingConditionIfNeeded(ctx context.Context,
 		return err
 	}
 
-	c.EventRecorder.Eventf(work, nil, corev1.EventTypeNormal, kmdevents.EventReasonWorkDispatching, "", newWorkDispatchingCondition.Message)
+	c.EventRecorder.Eventf(work, nil, corev1.EventTypeNormal, kmdevents.EventReasonWorkDispatching, "DispatchWork", newWorkDispatchingCondition.Message)
 	return nil
 }
 
