@@ -23,9 +23,9 @@ jobs:
           - amd64
           - arm64
     steps:
-    - uses: actions/checkout@v6
+    - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
     - name: Set up Go
-      uses: actions/setup-go@v6
+      uses: actions/setup-go@4b73464bb391d4059bd26b0524d20df3927bd417 # v6
       with:
         go-version-file: go.mod
     - name: Making and packaging
@@ -34,13 +34,13 @@ jobs:
         GOARCH: ${{ matrix.arch }}
       run: make release-${{ matrix.target }}
     - name: upload cli
-      uses: actions/upload-artifact@v7
+      uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7
       with:
         name: cli-${{ matrix.target }}-${{ matrix.os }}-${{ matrix.arch }}.tgz
         path: _output/release/${{ matrix.target }}-${{ matrix.os }}-${{ matrix.arch }}.tgz
     - name: Uploading assets...
       if: ${{ !env.ACT }}
-      uses: softprops/action-gh-release@v2
+      uses: softprops/action-gh-release@153bb8e04406b158c6c84fc1615b65b24149a1fe # v2
       with:
         files: |
           _output/release/${{ matrix.target }}-${{ matrix.os }}-${{ matrix.arch }}.tgz
@@ -52,7 +52,7 @@ jobs:
       hashes: ${{ steps.hash.outputs.hashes }}
     steps:
       - name: download cli
-        uses: actions/download-artifact@v8
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
         with:
           path: _output/release
           pattern: cli-*
@@ -71,7 +71,7 @@ jobs:
       id-token: write # Needed for provenance signing and ID
       contents: write #  Needed for release uploads
     # Must be referenced by a tag. https://github.com/slsa-framework/slsa-github-generator/blob/main/internal/builders/container/README.md#referencing-the-slsa-generator
-    uses: slsa-framework/slsa-github-generator/.github/workflows/generator_generic_slsa3.yml@v2.1.0
+    uses: slsa-framework/slsa-github-generator/.github/workflows/generator_generic_slsa3.yml@f7dd8c54c2067bafc12ca7a55595d5ee9b75204a # v2.1.0
     with:
       base64-subjects: "${{ needs.generate-subject-for-cli-provenance.outputs.hashes }}"
       provenance-name: "karmada-cli.intoto.jsonl"
@@ -84,12 +84,12 @@ jobs:
       hashes: ${{ steps.hash.outputs.hashes }}
     runs-on: ubuntu-22.04
     steps:
-    - uses: actions/checkout@v6
+    - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
     - name: Rename the crds directory
       run: |
         mv ./charts/karmada/_crds ./charts/karmada/crds
     - name: Tar the crds
-      uses: a7ul/tar-action@v1.2.0
+      uses: a7ul/tar-action@ed9cbd44fc9276db29ea2fb1f8adf3d7e0691589 # v1.2.0
       with:
         command: c
         cwd: ./charts/karmada/
@@ -102,7 +102,7 @@ jobs:
         # base64 -w0 encodes to base64 and outputs on a single line.
         echo "hashes=$(sha256sum crds.tar.gz | base64 -w0)" >> "$GITHUB_OUTPUT"
     - name: Uploading crd assets...
-      uses: softprops/action-gh-release@v2
+      uses: softprops/action-gh-release@153bb8e04406b158c6c84fc1615b65b24149a1fe # v2
       with:
         files: |
           crds.tar.gz
@@ -113,7 +113,7 @@ jobs:
       id-token: write # Needed for provenance signing and ID
       contents: write #  Needed for release uploads
     # Must be referenced by a tag. https://github.com/slsa-framework/slsa-github-generator/blob/main/internal/builders/container/README.md#referencing-the-slsa-generator
-    uses: slsa-framework/slsa-github-generator/.github/workflows/generator_generic_slsa3.yml@v2.1.0
+    uses: slsa-framework/slsa-github-generator/.github/workflows/generator_generic_slsa3.yml@f7dd8c54c2067bafc12ca7a55595d5ee9b75204a # v2.1.0
     with:
       base64-subjects: "${{ needs.release-crds-assests.outputs.hashes }}"
       provenance-name: "karmada-crds.intoto.jsonl"
@@ -126,14 +126,14 @@ jobs:
       hashes: ${{ steps.hash.outputs.hashes }}
     runs-on: ubuntu-22.04
     steps:
-    - uses: actions/checkout@v6
+    - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
     - name: Making helm charts
       env:
         VERSION: ${{ github.ref_name }}
       run: make package-chart
     - name: Uploading assets...
       if: ${{ !env.ACT }}
-      uses: softprops/action-gh-release@v2
+      uses: softprops/action-gh-release@153bb8e04406b158c6c84fc1615b65b24149a1fe # v2
       with:
         files: |
           _output/charts/karmada-chart-${{ github.ref_name }}.tgz
@@ -152,7 +152,7 @@ jobs:
       id-token: write # Needed for provenance signing and ID
       contents: write #  Needed for release uploads
     # Must be referenced by a tag. https://github.com/slsa-framework/slsa-github-generator/blob/main/internal/builders/container/README.md#referencing-the-slsa-generator
-    uses: slsa-framework/slsa-github-generator/.github/workflows/generator_generic_slsa3.yml@v2.1.0
+    uses: slsa-framework/slsa-github-generator/.github/workflows/generator_generic_slsa3.yml@f7dd8c54c2067bafc12ca7a55595d5ee9b75204a # v2.1.0
     with:
       base64-subjects: "${{ needs.release-charts.outputs.hashes }}"
       provenance-name: "karmada-charts.intoto.jsonl"
@@ -165,7 +165,7 @@ jobs:
       hashes: ${{ steps.sbom-hash.outputs.hashes}}
     runs-on: ubuntu-22.04
     steps:
-    - uses: actions/checkout@v6
+    - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
     - name: Generate sbom for karmada file system
       uses: aquasecurity/trivy-action@0.35.0
       with:
@@ -184,7 +184,7 @@ jobs:
         # base64 -w0 encodes to base64 and outputs on a single line.
         echo "hashes=$(sha256sum sbom.tar.gz | base64 -w0)" >> "$GITHUB_OUTPUT"
     - name: Uploading sbom assets...
-      uses: softprops/action-gh-release@v2
+      uses: softprops/action-gh-release@153bb8e04406b158c6c84fc1615b65b24149a1fe # v2
       with:
         files: |
           sbom.tar.gz
@@ -195,7 +195,7 @@ jobs:
       id-token: write # Needed for provenance signing and ID
       contents: write #  Needed for release uploads
     # Must be referenced by a tag. https://github.com/slsa-framework/slsa-github-generator/blob/main/internal/builders/container/README.md#referencing-the-slsa-generator
-    uses: slsa-framework/slsa-github-generator/.github/workflows/generator_generic_slsa3.yml@v2.1.0
+    uses: slsa-framework/slsa-github-generator/.github/workflows/generator_generic_slsa3.yml@f7dd8c54c2067bafc12ca7a55595d5ee9b75204a # v2.1.0
     with:
       base64-subjects: "${{ needs.sbom-assests.outputs.hashes }}"
       provenance-name: "karmada-sbom.intoto.jsonl"
@@ -220,8 +220,8 @@ jobs:
         echo "Got the latest tag:$LATEST_TAG"
         echo "event.tag:"${{ github.event.release.tag_name }}
         echo "latestTag=$LATEST_TAG" >> "$GITHUB_OUTPUT"
-    - uses: actions/checkout@v6
+    - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
       if: steps.get-latest-tag.outputs.latestTag == github.event.release.tag_name
     - name: Update new version in krew-index
       if: steps.get-latest-tag.outputs.latestTag == github.event.release.tag_name
-      uses: rajatjindal/krew-release-bot@v0.0.51
+      uses: rajatjindal/krew-release-bot@c970b8a8f6dbc2f2285a26e3ae160903b87002c3 # v0.0.51
