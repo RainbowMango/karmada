@@ -14,6 +14,19 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
+// extract-flags captures the --help output of every Karmada component and its
+// subcommands, writing one .txt file per command into an output directory.
+//
+// Usage:
+//
+//	go run hack/tools/extract-flags/main.go [output-dir]
+//
+// The default output directory is docs/command-flags.
+// Files are named after the command path with spaces replaced by underscores,
+// e.g. "karmada-controller-manager.txt" and "karmada-controller-manager_version.txt".
+//
+// The generated files are checked into the repository and verified in CI by
+// hack/verify-command-flags.sh to detect unintentional flag changes.
 package main
 
 import (
@@ -21,115 +34,124 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"maps"
 	"os"
 	"path/filepath"
-	"sort"
 	"strings"
 
 	"github.com/spf13/cobra"
-	"github.com/spf13/pflag"
 	cliflag "k8s.io/component-base/cli/flag"
 	_ "k8s.io/component-base/logs/json/register"
-	controllerruntime "sigs.k8s.io/controller-runtime"
 
-	controllermanagerapp "github.com/karmada-io/karmada/cmd/controller-manager/app"
+	agentapp "github.com/karmada-io/karmada/cmd/agent/app"
+	aaapp "github.com/karmada-io/karmada/cmd/aggregated-apiserver/app"
+	cmapp "github.com/karmada-io/karmada/cmd/controller-manager/app"
+	deschapp "github.com/karmada-io/karmada/cmd/descheduler/app"
+	searchapp "github.com/karmada-io/karmada/cmd/karmada-search/app"
+	adapterapp "github.com/karmada-io/karmada/cmd/metrics-adapter/app"
+	estiapp "github.com/karmada-io/karmada/cmd/scheduler-estimator/app"
+	schapp "github.com/karmada-io/karmada/cmd/scheduler/app"
+	webhookapp "github.com/karmada-io/karmada/cmd/webhook/app"
 	"github.com/karmada-io/karmada/pkg/util/names"
 )
 
 const (
-	// argvOutputDirOptional is os.Args[1], the optional output directory when the user passes one argument after the program name.
-	argvOutputDirOptional = 1
-	// maxArgCount is the maximum number of os.Args entries we accept: program name plus at most one path.
-	maxArgCount = 2
-
-	// defaultOutputDir is used when no output directory is given; it matches the repo layout for generated flag docs.
+	// defaultOutputDir matches the repo layout for generated flag docs.
 	defaultOutputDir = "docs/command-flags"
 
 	dirPerm  = 0o755
-	filePerm = 0o600
+	filePerm = 0o644
 )
 
-// componentSpec wires a canonical component name (see pkg/util/names) to its Cobra root command.
+// componentSpec maps a component name to its cobra root command constructor.
 // Add new entries here when documenting flags for additional binaries.
 var componentSpecs = []struct {
 	name string
-	new  func(context.Context) *cobra.Command
+	cmd  func(context.Context) *cobra.Command
 }{
-	{
-		name: names.KarmadaControllerManagerComponentName,
-		new:  controllermanagerapp.NewControllerManagerCommand,
-	},
+	{names.KarmadaControllerManagerComponentName, func(ctx context.Context) *cobra.Command {
+		return cmapp.NewControllerManagerCommand(ctx)
+	}},
+	{names.KarmadaSchedulerComponentName, func(ctx context.Context) *cobra.Command {
+		return schapp.NewSchedulerCommand(ctx)
+	}},
+	{names.KarmadaAgentComponentName, func(ctx context.Context) *cobra.Command {
+		return agentapp.NewAgentCommand(ctx)
+	}},
+	{names.KarmadaAggregatedAPIServerComponentName, func(ctx context.Context) *cobra.Command {
+		return aaapp.NewAggregatedApiserverCommand(ctx)
+	}},
+	{names.KarmadaDeschedulerComponentName, func(ctx context.Context) *cobra.Command {
+		return deschapp.NewDeschedulerCommand(ctx)
+	}},
+	{names.KarmadaSearchComponentName, func(ctx context.Context) *cobra.Command {
+		return searchapp.NewKarmadaSearchCommand(ctx)
+	}},
+	{names.KarmadaSchedulerEstimatorComponentName, func(ctx context.Context) *cobra.Command {
+		return estiapp.NewSchedulerEstimatorCommand(ctx)
+	}},
+	{names.KarmadaWebhookComponentName, func(ctx context.Context) *cobra.Command {
+		return webhookapp.NewWebhookCommand(ctx)
+	}},
+	{names.KarmadaMetricsAdapterComponentName, func(ctx context.Context) *cobra.Command {
+		return adapterapp.NewMetricsAdapterCommand(ctx)
+	}},
 }
 
-// formatDeprecatedFlags extracts and formats deprecated flags from a command and its subcommands.
-func formatDeprecatedFlags(cmd *cobra.Command) string {
-	var collect func(*cobra.Command) map[string]string
-	collect = func(c *cobra.Command) map[string]string {
-		deprecated := make(map[string]string)
-		c.Flags().VisitAll(func(flag *pflag.Flag) {
-			if flag.Deprecated != "" {
-				deprecated[flag.Name] = flag.Deprecated
-			}
-		})
-		for _, sub := range c.Commands() {
-			maps.Copy(deprecated, collect(sub))
-		}
-		return deprecated
-	}
-	deprecated := collect(cmd)
-	if len(deprecated) == 0 {
-		return ""
-	}
-	names := make([]string, 0, len(deprecated))
-	for name := range deprecated {
-		names = append(names, name)
-	}
-	sort.Strings(names)
-	var lines []string
-	lines = append(lines, "", "Deprecated flags:", "")
-	for _, flagName := range names {
-		// Label line, message line with fixed padding (cobra help–like alignment), then "" for a blank line between entries.
-		lines = append(lines, fmt.Sprintf("      [DEPRECATED] --%s", flagName), fmt.Sprintf("                           %s", deprecated[flagName]), "")
-	}
-	return strings.Join(lines, "\n")
-}
-
-func writeComponentHelp(outputDir string, componentName string, cmd *cobra.Command) error {
-	cmd.InitDefaultHelpCmd()
-	cmd.InitDefaultCompletionCmd()
-	cmd.SetGlobalNormalizationFunc(cliflag.WordSepNormalizeFunc)
-
+// captureHelp captures the --help output of a cobra command by redirecting
+// stdout to a buffer. The returned bytes are exactly what a user would see
+// when running "<binary> --help" or "<binary> <subcommand> --help".
+func captureHelp(cmd *cobra.Command) ([]byte, error) {
 	var buf bytes.Buffer
 	cmd.SetOut(&buf)
 	cmd.SetErr(&buf)
 	if err := cmd.Help(); err != nil {
-		return fmt.Errorf("help for %s: %w", componentName, err)
+		return nil, err
 	}
-	content := buf.Bytes()
-	if s := formatDeprecatedFlags(cmd); s != "" {
-		content = append(content, []byte(s)...)
+	return buf.Bytes(), nil
+}
+
+// buildFilename converts a command path like "karmada-controller-manager version"
+// to a filename like "karmada-controller-manager_version.txt".
+// The root command (single word) produces "karmada-controller-manager.txt".
+func buildFilename(cmdPath string) string {
+	return strings.ReplaceAll(cmdPath, " ", "_") + ".txt"
+}
+
+// writeCommandTree recursively captures help text for cmd and all its
+// available subcommands, writing one file per command.
+func writeCommandTree(outputDir string, cmd *cobra.Command) error {
+	content, err := captureHelp(cmd)
+	if err != nil {
+		return fmt.Errorf("help for %q: %w", cmd.CommandPath(), err)
 	}
 
-	outputPath := filepath.Join(outputDir, componentName+".txt")
+	outputPath := filepath.Join(outputDir, buildFilename(cmd.CommandPath()))
 	if err := os.WriteFile(outputPath, content, filePerm); err != nil {
 		return fmt.Errorf("write %s: %w", outputPath, err)
 	}
 	fmt.Printf("Wrote %s\n", outputPath)
+
+	for _, sub := range cmd.Commands() {
+		if !sub.IsAvailableCommand() && !sub.IsAdditionalHelpTopicCommand() {
+			continue
+		}
+		if err := writeCommandTree(outputDir, sub); err != nil {
+			return err
+		}
+	}
 	return nil
 }
 
 func main() {
-	if len(os.Args) > maxArgCount {
+	if len(os.Args) > 2 {
 		fmt.Fprintln(os.Stderr, "Usage: extract-flags [output-dir]")
 		fmt.Fprintf(os.Stderr, "  default output-dir: %s\n", defaultOutputDir)
 		os.Exit(1)
 	}
 
 	outputDir := defaultOutputDir
-	// len(os.Args) is 1 when only argvProgram is present; otherwise the user supplied an explicit output directory.
-	if len(os.Args) > argvOutputDirOptional {
-		outputDir = os.Args[argvOutputDirOptional]
+	if len(os.Args) == 2 {
+		outputDir = os.Args[1]
 	}
 
 	if err := os.MkdirAll(outputDir, dirPerm); err != nil {
@@ -137,12 +159,18 @@ func main() {
 		os.Exit(1)
 	}
 
-	ctx := controllerruntime.SetupSignalHandler()
+	ctx := context.TODO()
 
 	var genErrs []error
 	for _, spec := range componentSpecs {
-		cmd := spec.new(ctx)
-		if err := writeComponentHelp(outputDir, spec.name, cmd); err != nil {
+		cmd := spec.cmd(ctx)
+		// Ensure default subcommands (help, completion) are registered before
+		// we walk the command tree.
+		cmd.InitDefaultHelpCmd()
+		cmd.InitDefaultCompletionCmd()
+		cmd.SetGlobalNormalizationFunc(cliflag.WordSepNormalizeFunc)
+
+		if err := writeCommandTree(outputDir, cmd); err != nil {
 			genErrs = append(genErrs, fmt.Errorf("%s: %w", spec.name, err))
 		}
 	}

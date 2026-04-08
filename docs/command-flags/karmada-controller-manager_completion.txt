@@ -1,14 +1,15 @@
-The karmada-controller-manager runs various controllers.
-The controllers watch Karmada objects and then talk to the underlying
-clusters' API servers to create regular Kubernetes resources.
+Generate the autocompletion script for karmada-controller-manager for the specified shell.
+See each sub-command's help for details on how to use the generated script.
+
 
 Usage:
-  karmada-controller-manager [flags]
+  karmada-controller-manager completion
 
 Available Commands:
-  karmada-controller-manager completion                      Generate the autocompletion script for the specified shell
-  karmada-controller-manager help                            Help about any command
-  karmada-controller-manager version                         Print the version information
+  karmada-controller-manager completion bash                            Generate the autocompletion script for bash
+  karmada-controller-manager completion fish                            Generate the autocompletion script for fish
+  karmada-controller-manager completion powershell                      Generate the autocompletion script for powershell
+  karmada-controller-manager completion zsh                             Generate the autocompletion script for zsh
 
 Logs flags:
 

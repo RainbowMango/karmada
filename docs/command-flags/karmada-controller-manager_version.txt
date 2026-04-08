@@ -1,14 +1,7 @@
-The karmada-controller-manager runs various controllers.
-The controllers watch Karmada objects and then talk to the underlying
-clusters' API servers to create regular Kubernetes resources.
+Print the version information.
 
 Usage:
-  karmada-controller-manager [flags]
-
-Available Commands:
-  karmada-controller-manager completion                      Generate the autocompletion script for the specified shell
-  karmada-controller-manager help                            Help about any command
-  karmada-controller-manager version                         Print the version information
+  karmada-controller-manager version
 
 Logs flags:
 

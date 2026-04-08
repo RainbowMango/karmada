@@ -1,14 +1,29 @@
-The karmada-controller-manager runs various controllers.
-The controllers watch Karmada objects and then talk to the underlying
-clusters' API servers to create regular Kubernetes resources.
+Generate the autocompletion script for the zsh shell.
+
+If shell completion is not already enabled in your environment you will need
+to enable it.  You can execute the following once:
+
+	echo "autoload -U compinit; compinit" >> ~/.zshrc
+
+To load completions in your current shell session:
+
+	source <(karmada-agent completion zsh)
+
+To load completions for every new session, execute once:
+
+#### Linux:
+
+	karmada-agent completion zsh > "${fpath[1]}/_karmada-agent"
+
+#### macOS:
+
+	karmada-agent completion zsh > $(brew --prefix)/share/zsh/site-functions/_karmada-agent
+
+You will need to start a new shell for this setup to take effect.
+
 
 Usage:
-  karmada-controller-manager [flags]
-
-Available Commands:
-  karmada-controller-manager completion                      Generate the autocompletion script for the specified shell
-  karmada-controller-manager help                            Help about any command
-  karmada-controller-manager version                         Print the version information
+  karmada-agent completion zsh [flags]
 
 Logs flags:
 
@@ -55,60 +70,51 @@ Logs flags:
 
 Generic flags:
 
+      --cert-rotation-checking-interval duration                                                                                                                                                                           
+                The interval of checking if the certificate need to be rotated. This is only applicable if cert rotation is enabled (default 5m0s)
+      --cert-rotation-remaining-time-threshold float                                                                                                                                                                       
+                The threshold of remaining time of the valid certificate. This is only applicable if cert rotation is enabled. (default 0.2)
       --cluster-api-burst int                                                                                                                                                                                              
                 Burst to use while talking with cluster kube-apiserver. (default 60)
-      --cluster-api-context string                                                                                                                                                                                         
-                Name of the cluster context in cluster-api management cluster kubeconfig file.
-      --cluster-api-kubeconfig string                                                                                                                                                                                      
-                Path to the cluster-api management cluster kubeconfig file.
+      --cluster-api-endpoint string                                                                                                                                                                                        
+                APIEndpoint of the cluster.
       --cluster-api-qps float32                                                                                                                                                                                            
                 QPS to use while talking with cluster kube-apiserver. (default 40)
       --cluster-cache-sync-timeout duration                                                                                                                                                                                
                 Timeout period waiting for cluster cache to sync. (default 2m0s)
       --cluster-failure-threshold duration                                                                                                                                                                                 
                 The duration of failure for the cluster to be considered unhealthy. (default 30s)
-      --cluster-monitor-grace-period duration                                                                                                                                                                              
-                Specifies the grace period of allowing a running cluster to be unresponsive before marking it unhealthy. (default 40s)
-      --cluster-monitor-period duration                                                                                                                                                                                    
-                Specifies how often karmada-controller-manager monitors cluster health status. (default 5s)
-      --cluster-startup-grace-period duration                                                                                                                                                                              
-                Specifies the grace period of allowing a cluster to be unresponsive during startup before marking it unhealthy. (default 1m0s)
+      --cluster-lease-duration duration                                                                                                                                                                                    
+                Specifies the expiration period of a cluster lease. (default 40s)
+      --cluster-lease-renew-interval-fraction float                                                                                                                                                                        
+                Specifies the cluster lease renew interval fraction. (default 0.25)
+      --cluster-name string                                                                                                                                                                                                
+                Name of member cluster that the agent serves for.
+      --cluster-namespace string                                                                                                                                                                                           
+                Namespace in the control plane where member cluster secrets are stored. (default "karmada-cluster")
+      --cluster-provider string                                                                                                                                                                                            
+                Provider of the joining cluster. The Karmada scheduler can use this information to spread workloads across providers for higher availability.
+      --cluster-region string                                                                                                                                                                                              
+                The region of the joining cluster. The Karmada scheduler can use this information to spread workloads across regions for higher availability.
       --cluster-status-update-frequency duration                                                                                                                                                                           
-                Specifies how often karmada-controller-manager posts cluster status to karmada-apiserver. (default 10s)
+                Specifies how often karmada-agent posts cluster status to karmada-apiserver. Note: be cautious when changing the constant, it must work with ClusterMonitorGracePeriod in karmada-controller-manager. (default 10s)
       --cluster-success-threshold duration                                                                                                                                                                                 
                 The duration of successes for the cluster to be considered healthy after recovery. (default 30s)
-      --concurrent-cluster-propagation-policy-syncs int                                                                                                                                                                    
-                The number of ClusterPropagationPolicy that are allowed to sync concurrently. (default 1)
+      --cluster-zones strings                                                                                                                                                                                              
+                The zones of the joining cluster. The Karmada scheduler can use this information to spread workloads across zones for higher availability.
       --concurrent-cluster-syncs int                                                                                                                                                                                       
                 The number of Clusters that are allowed to sync concurrently. (default 5)
-      --concurrent-clusterresourcebinding-syncs int                                                                                                                                                                        
-                The number of ClusterResourceBindings that are allowed to sync concurrently. (default 5)
-      --concurrent-dependent-resource-syncs int                                                                                                                                                                            
-                The number of dependent resource that are allowed to sync concurrently. (default 2)
-      --concurrent-namespace-syncs int                                                                                                                                                                                     
-                The number of Namespaces that are allowed to sync concurrently. (default 1)
-      --concurrent-propagation-policy-syncs int                                                                                                                                                                            
-                The number of PropagationPolicy that are allowed to sync concurrently. (default 1)
-      --concurrent-resource-template-syncs int                                                                                                                                                                             
-                The number of resource templates that are allowed to sync concurrently. (default 5)
-      --concurrent-resourcebinding-syncs int                                                                                                                                                                               
-                The number of ResourceBindings that are allowed to sync concurrently. (default 5)
       --concurrent-work-syncs int                                                                                                                                                                                          
                 The number of Works that are allowed to sync concurrently. (default 5)
       --controllers strings                                                                                                                                                                                                
-                A list of controllers to enable. '*' enables all on-by-default controllers, 'foo' enables the controller named 'foo', '-foo' disables the controller named 'foo'. 
-                All controllers: agentcsrapproving, applicationFailover, binding, bindingStatus, cluster, clusterStatus, clustertaintpolicy, cronFederatedHorizontalPodAutoscaler, deploymentReplicasSyncer, endpointSlice,
-                endpointsliceCollect, endpointsliceDispatch, execution, federatedHorizontalPodAutoscaler, federatedResourceQuotaEnforcement, federatedResourceQuotaStatus, federatedResourceQuotaSync, gracefulEviction,
-                hpaScaleTargetMarker, multiclusterservice, namespace, remedy, serviceExport, serviceImport, unifiedAuth, workStatus, workloadRebalancer.
-                Disabled-by-default controllers: deploymentReplicasSyncer, hpaScaleTargetMarker (default [*])
+                A list of controllers to enable. '*' enables all on-by-default controllers, 'foo' enables the controller named 'foo', '-foo' disables the controller named 'foo'. All controllers: certRotation,
+                clusterStatus, endpointsliceCollect, execution, serviceExport, workStatus. (default [*])
       --enable-cluster-resource-modeling                                                                                                                                                                                   
                 Enable means controller would build resource modeling for each cluster by syncing Nodes and Pods resources.
                 The resource modeling might be used by the scheduler to make scheduling decisions in scenario of dynamic replica assignment based on cluster free resources.
                 Disable if it does not fit your cases for better performance. (default true)
       --enable-pprof                                                                                                                                                                                                       
                 Enable profiling via web interface host:port/debug/pprof/.
-      --enable-taint-manager                                                                                                                                                                                               
-                If set to true enables NoExecute Taints and will evict all not-tolerating objects propagating on Clusters tainted with this kind of Taints. (default true)
       --feature-gates mapStringBool                                                                                                                                                                                        
                 A set of key=value pairs that describe feature gates for alpha/experimental features. Options are:
                 AllAlpha=true|false (ALPHA - default=false)
@@ -129,33 +135,20 @@ Generic flags:
                 ResourceQuotaEstimate=true|false (ALPHA - default=false)
                 StatefulFailoverInjection=true|false (ALPHA - default=false)
                 WorkloadAffinity=true|false (ALPHA - default=false)
-      --federated-resource-quota-sync-period duration                                                                                                                                                                      
-                The interval for periodic full resynchronization of FederatedResourceQuota resources. This ensures quota recalculations occur at regular intervals to correct potential inaccuracies, particularly when
-                webhook validation side effects. (default 5m0s)
-      --graceful-eviction-timeout duration                                                                                                                                                                                 
-                Specifies the timeout period waiting for the graceful-eviction-controller performs the final removal since the workload(resource) has been moved to the graceful eviction tasks. (default 10m0s)
       --health-probe-bind-address string                                                                                                                                                                                   
                 The TCP address that the controller should bind to for serving health probes(e.g. 127.0.0.1:10357, :10357). It can be set to "0" to disable serving the health probe. Defaults to 0.0.0.0:10357. (default ":10357")
-      --horizontal-pod-autoscaler-cpu-initialization-period duration                                                                                                                                                       
-                The period after pod start when CPU samples might be skipped. (default 5m0s)
-      --horizontal-pod-autoscaler-downscale-delay duration                                                                                                                                                                 
-                The period since last downscale, before another downscale can be performed in horizontal pod autoscaler. (default 5m0s)
-      --horizontal-pod-autoscaler-downscale-stabilization duration                                                                                                                                                         
-                The period for which autoscaler will look backwards and not scale down below any recommendation it made during that period. (default 5m0s)
-      --horizontal-pod-autoscaler-initial-readiness-delay duration                                                                                                                                                         
-                The period after pod start during which readiness changes will be treated as initial readiness. (default 30s)
-      --horizontal-pod-autoscaler-sync-period duration                                                                                                                                                                     
-                The period for syncing the number of pods in horizontal pod autoscaler. (default 15s)
-      --horizontal-pod-autoscaler-tolerance float                                                                                                                                                                          
-                The minimum change (from 1.0) in the desired-to-actual metrics ratio for the horizontal pod autoscaler to consider scaling. (default 0.1)
-      --horizontal-pod-autoscaler-upscale-delay duration                                                                                                                                                                   
-                The period since last upscale, before another upscale can be performed in horizontal pod autoscaler. (default 3m0s)
+      --karmada-context string                                                                                                                                                                                             
+                Name of the cluster context in karmada control plane kubeconfig file.
+      --karmada-kubeconfig string                                                                                                                                                                                          
+                Path to karmada control plane kubeconfig file.
+      --karmada-kubeconfig-namespace string                                                                                                                                                                                
+                Namespace of the secret containing karmada-agent certificate. This is only applicable if cert rotation is enabled. (default "karmada-system")
       --kube-api-burst int                                                                                                                                                                                                 
                 Burst to use while talking with karmada-apiserver. (default 60)
       --kube-api-qps float32                                                                                                                                                                                               
                 QPS to use while talking with karmada-apiserver. (default 40)
       --kubeconfig string                                                                                                                                                                                                  
-                Path to karmada control plane kubeconfig file.
+                Paths to a kubeconfig. Only required if out-of-cluster.
       --leader-elect                                                                                                                                                                                                       
                 Start a leader election client and gain leadership before executing the main loop. Enable this when running replicated components for high availability. (default true)
       --leader-elect-lease-duration duration                                                                                                                                                                               
@@ -172,6 +165,8 @@ Generic flags:
                 The TCP address that the controller should bind to for serving prometheus metrics(e.g. 127.0.0.1:8080, :8080). It can be set to "0" to disable the metrics serving. (default ":8080")
       --profiling-bind-address string                                                                                                                                                                                      
                 The TCP address for serving profiling(e.g. 127.0.0.1:6060, :6060). This is only applicable if profiling is enabled. (default ":6060")
+      --proxy-server-address string                                                                                                                                                                                        
+                Address of the proxy server that is used to proxy to the cluster.
       --rate-limiter-base-delay duration                                                                                                                                                                                   
                 The base delay for rate limiter. (default 5ms)
       --rate-limiter-bucket-size int                                                                                                                                                                                       
@@ -180,26 +175,8 @@ Generic flags:
                 The max delay for rate limiter. (default 16m40s)
       --rate-limiter-qps int                                                                                                                                                                                               
                 The QPS for rate limier. (default 10)
+      --report-secrets strings                                                                                                                                                                                             
+                The secrets that are allowed to be reported to the Karmada control plane during registering. Valid values are 'KubeCredentials', 'KubeImpersonator' and 'None'. e.g 'KubeCredentials,KubeImpersonator' or
+                'None'. (default [KubeCredentials,KubeImpersonator])
       --resync-period duration                                                                                                                                                                                             
                 Base frequency the informers are resynced.
-      --skipped-propagating-apis string                                                                                                                                                                                    
-                Semicolon separated resources that should be skipped from propagating in addition to the default skip list(cluster.karmada.io;policy.karmada.io;work.karmada.io). Supported formats are:
-                <group> for skip resources with a specific API group(e.g. networking.k8s.io),
-                <group>/<version> for skip resources with a specific API version(e.g. networking.k8s.io/v1beta1),
-                <group>/<version>/<kind>,<kind> for skip one or more specific resource(e.g. networking.k8s.io/v1beta1/Ingress,IngressClass) where the kinds are case-insensitive.
-      --skipped-propagating-namespaces strings                                                                                                                                                                             
-                Comma-separated namespaces that should be skipped from propagating.
-                Note: 'karmada-system', 'karmada-cluster' and 'karmada-es-.*' are Karmada reserved namespaces that will always be skipped. (default [kube-.*])
-
-Cluster failover flags:
-
-      --enable-no-execute-taint-eviction                                                                                                                                                                                   
-                Enables controller response to NoExecute taints on clusters, which triggers eviction of workloads without explicit tolerations. Given the impact of eviction caused by NoExecute Taint, this parameter is
-                designed to remain disabled by default and requires careful evaluation by administrators before being enabled.
-                
-      --no-execute-taint-eviction-purge-mode string                                                                                                                                                                        
-                Controls resource cleanup behavior for NoExecute-triggered evictions (only active when --enable-no-execute-taint-eviction=true). Supported values are "Directly", and "Gracefully". "Directly" mode directly
-                evicts workloads first (risking temporary service interruption) and then triggers rescheduling to other clusters, while "Gracefully" mode first schedules workloads to new clusters and then cleans up
-                original workloads after successful startup elsewhere to ensure service continuity. (default "Gracefully")
-      --resource-eviction-rate float32                                                                                                                                                                                     
-                This is the number of resources to be evicted per second in a cluster failover scenario. (default 0.5)
