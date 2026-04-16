@@ -6,31 +6,67 @@
 # Configuration options: https://docs.github.com/en/code-security/dependabot/dependabot-version-updates/configuration-options-for-the-dependabot.yml-file
 version: 2
 updates:
-- package-ecosystem: "github-actions"
-  directory: "/"
-  schedule:
-    # Check for updates to GitHub Actions every week
-    interval: "weekly"
-    
-- package-ecosystem: docker
-  directory: /cluster/images/
-  schedule:
-    interval: weekly
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      # Check for updates every Monday at 00:00 UTC
+      interval: "weekly"
+      day: "monday"
+      time: "00:00"
+      timezone: "UTC"
 
-- package-ecosystem: docker
-  directory: /cluster/images/
-  target-branch: "release-1.17"
-  schedule:
-    interval: weekly
+  - package-ecosystem: "gomod"
+    directory: "/"
+    schedule:
+      # Check for updates every Monday at 00:00 UTC
+      interval: "weekly"
+      day: "monday"
+      time: "00:00"
+      timezone: "UTC"
+    vendor: true
+    allow:
+      - dependency-type: "direct"
+    ignore:
+      # Kubernetes dependencies require manual handling during version upgrades
+      # due to breaking changes that Dependabot typically cannot resolve automatically.
+      - dependency-name: "k8s.io/*"
+      - dependency-name: "sigs.k8s.io/*"
 
-- package-ecosystem: docker
-  directory: /cluster/images/
-  target-branch: "release-1.16"
-  schedule:
-    interval: weekly
+  - package-ecosystem: docker
+    directory: /cluster/images/
+    schedule:
+      # Check for updates every Monday at 00:00 UTC
+      interval: "weekly"
+      day: "monday"
+      time: "00:00"
+      timezone: "UTC"
 
-- package-ecosystem: docker
-  directory: /cluster/images/
-  target-branch: "release-1.15"
-  schedule:
-    interval: weekly
+  - package-ecosystem: docker
+    directory: /cluster/images/
+    target-branch: "release-1.17"
+    schedule:
+      # Check for updates every Monday at 00:00 UTC
+      interval: "weekly"
+      day: "monday"
+      time: "00:00"
+      timezone: "UTC"
+
+  - package-ecosystem: docker
+    directory: /cluster/images/
+    target-branch: "release-1.16"
+    schedule:
+      # Check for updates every Monday at 00:00 UTC
+      interval: "weekly"
+      day: "monday"
+      time: "00:00"
+      timezone: "UTC"
+
+  - package-ecosystem: docker
+    directory: /cluster/images/
+    target-branch: "release-1.15"
+    schedule:
+      # Check for updates every Monday at 00:00 UTC
+      interval: "weekly"
+      day: "monday"
+      time: "00:00"
+      timezone: "UTC"
