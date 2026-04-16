@@ -44,6 +44,7 @@ import (
 
 	clusterv1alpha1 "github.com/karmada-io/karmada/pkg/apis/cluster/v1alpha1"
 	policyv1alpha1 "github.com/karmada-io/karmada/pkg/apis/policy/v1alpha1"
+	"github.com/karmada-io/karmada/pkg/events"
 	"github.com/karmada-io/karmada/pkg/karmadactl/cordon"
 	"github.com/karmada-io/karmada/pkg/karmadactl/options"
 	cmdutil "github.com/karmada-io/karmada/pkg/karmadactl/util"
@@ -211,6 +212,11 @@ var _ = ginkgo.Describe("Karmadactl promote testing", func() {
 					return err1 == nil && err2 == nil
 				}, pollTimeout, pollInterval).Should(gomega.Equal(true))
 			})
+			ginkgo.By(fmt.Sprintf("wait for SyncImpersonationConfigSucceed event on cluster(%s)", member1), func() {
+				framework.WaitEventFitWith(kubeClient, "default", member1, func(event corev1.Event) bool {
+					return event.Reason == events.EventReasonSyncImpersonationConfigSucceed
+				})
+			})
 		})
 
 	})
@@ -331,6 +337,12 @@ var _ = framework.SerialDescribe("Karmadactl join/unjoin testing", ginkgo.Labels
 				_, err := cmd.ExecOrDie()
 				gomega.Expect(err).ShouldNot(gomega.HaveOccurred())
 			})
+
+			ginkgo.By(fmt.Sprintf("wait for CreateExecutionSpaceSucceed event on cluster(%s)", clusterName), func() {
+				framework.WaitEventFitWith(kubeClient, "default", clusterName, func(event corev1.Event) bool {
+					return event.Reason == events.EventReasonCreateExecutionSpaceSucceed
+				})
+			})
 		})
 
 		ginkgo.BeforeEach(func() {
@@ -424,12 +436,20 @@ var _ = framework.SerialDescribe("Karmadactl cordon/uncordon testing", ginkgo.La
 			_, err := cmd.ExecOrDie()
 			gomega.Expect(err).ShouldNot(gomega.HaveOccurred())
 		})
+
+		ginkgo.By(fmt.Sprintf("wait for CreateExecutionSpaceSucceed event on cluster(%s)", clusterName), func() {
+			framework.WaitEventFitWith(kubeClient, "default", clusterName, func(event corev1.Event) bool {
+				return event.Reason == events.EventReasonCreateExecutionSpaceSucceed
+			})
+		})
+
 		// When a newly joined cluster is unready at the beginning, the scheduler will ignore it.
 		ginkgo.By(fmt.Sprintf("wait cluster %s ready", clusterName), func() {
 			framework.WaitClusterFitWith(controlPlaneClient, clusterName, func(cluster *clusterv1alpha1.Cluster) bool {
 				return meta.IsStatusConditionPresentAndEqual(cluster.Status.Conditions, clusterv1alpha1.ClusterConditionReady, metav1.ConditionTrue)
 			})
 		})
+
 		ginkgo.DeferCleanup(func() {
 			ginkgo.By(fmt.Sprintf("Unjoinning cluster: %s", clusterName), func() {
 				cmd := framework.NewKarmadactlCommand(kubeconfig, karmadaContext, karmadactlPath, "", 5*options.DefaultKarmadactlCommandDuration,
@@ -437,6 +457,13 @@ var _ = framework.SerialDescribe("Karmadactl cordon/uncordon testing", ginkgo.La
 				_, err := cmd.ExecOrDie()
 				gomega.Expect(err).ShouldNot(gomega.HaveOccurred())
 			})
+
+			ginkgo.By(fmt.Sprintf("wait for RemoveExecutionSpaceSucceed event on cluster(%s)", clusterName), func() {
+				framework.WaitEventFitWith(kubeClient, "default", clusterName, func(event corev1.Event) bool {
+					return event.Reason == events.EventReasonRemoveExecutionSpaceSucceed
+				})
+			})
+
 			ginkgo.By(fmt.Sprintf("Deleting clusters: %s", clusterName), func() {
 				err := deleteCluster(clusterName, kubeConfigPath)
 				gomega.Expect(err).ShouldNot(gomega.HaveOccurred())
@@ -1252,6 +1279,12 @@ var _ = framework.SerialDescribe("Karmadactl taint testing", ginkgo.Labels{NeedC
 				gomega.Expect(err).ShouldNot(gomega.HaveOccurred())
 			})
 
+			ginkgo.By(fmt.Sprintf("wait for CreateExecutionSpaceSucceed event on cluster(%s)", newClusterName), func() {
+				framework.WaitEventFitWith(kubeClient, "default", newClusterName, func(event corev1.Event) bool {
+					return event.Reason == events.EventReasonCreateExecutionSpaceSucceed
+				})
+			})
+
 			ginkgo.By(fmt.Sprintf("wait cluster %s ready", newClusterName), func() {
 				framework.WaitClusterFitWith(controlPlaneClient, newClusterName, func(cluster *clusterv1alpha1.Cluster) bool {
 					return meta.IsStatusConditionPresentAndEqual(cluster.Status.Conditions, clusterv1alpha1.ClusterConditionReady, metav1.ConditionTrue)
@@ -1264,6 +1297,12 @@ var _ = framework.SerialDescribe("Karmadactl taint testing", ginkgo.Labels{NeedC
 						"unjoin", "--cluster-kubeconfig", kubeConfigPath, "--cluster-context", clusterContext, "--cluster-namespace", "karmada-cluster", newClusterName)
 					_, err := cmd.ExecOrDie()
 					gomega.Expect(err).ShouldNot(gomega.HaveOccurred())
+				})
+
+				ginkgo.By(fmt.Sprintf("wait for RemoveExecutionSpaceSucceed event on cluster(%s)", newClusterName), func() {
+					framework.WaitEventFitWith(kubeClient, "default", newClusterName, func(event corev1.Event) bool {
+						return event.Reason == events.EventReasonRemoveExecutionSpaceSucceed
+					})
 				})
 
 				ginkgo.By(fmt.Sprintf("Deleting clusters: %s", newClusterName), func() {
