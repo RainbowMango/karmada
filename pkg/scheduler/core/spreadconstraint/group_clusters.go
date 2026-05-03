@@ -17,6 +17,7 @@ limitations under the License.
 package spreadconstraint
 
 import (
+	"fmt"
 	"math"
 
 	"k8s.io/utils/ptr"
@@ -92,6 +93,13 @@ type ClusterDetailInfo struct {
 	//AllocatableReplicas the max allocatable replicas in the cluster
 	AllocatableReplicas int32
 }
+
+// String returns a human-readable representation of the cluster detail info.
+func (c ClusterDetailInfo) String() string {
+	return fmt.Sprintf("%s(score=%d, availableReplicas=%d, overflowOrder=%d)", c.Name, c.Score, c.AvailableReplicas, c.OverflowOrder)
+}
+
+var _ fmt.Stringer = &ClusterDetailInfo{}
 
 // GroupClustersWithScore groups cluster base provider/region/zone/cluster
 func GroupClustersWithScore(
