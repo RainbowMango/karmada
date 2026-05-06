@@ -26,6 +26,7 @@ import (
 
 	clusterv1alpha1 "github.com/karmada-io/karmada/pkg/apis/cluster/v1alpha1"
 	policyv1alpha1 "github.com/karmada-io/karmada/pkg/apis/policy/v1alpha1"
+	"github.com/karmada-io/karmada/pkg/events"
 	"github.com/karmada-io/karmada/pkg/util/helper"
 	"github.com/karmada-io/karmada/test/e2e/framework"
 	karmadaresource "github.com/karmada-io/karmada/test/e2e/framework/resource/karmada"
@@ -103,6 +104,12 @@ var _ = framework.SerialDescribe("Taint cluster with ClusterTaintPolicy", func()
 				})
 			})
 
+			ginkgo.By(fmt.Sprintf("wait for TaintClusterSucceed event on cluster(%s)", targetClusterName), func() {
+				framework.WaitEventFitWith(kubeClient, "default", targetClusterName, func(event corev1.Event) bool {
+					return event.Reason == events.EventReasonTaintClusterSucceed
+				})
+			})
+
 			ginkgo.By(fmt.Sprintf("update cluster(%s) NetworkReady condition to true", targetClusterName), func() {
 				framework.UpdateClusterStatusCondition(karmadaClient, targetClusterName, metav1.Condition{
 					Type:   "NetworkReady",
@@ -116,7 +123,6 @@ var _ = framework.SerialDescribe("Taint cluster with ClusterTaintPolicy", func()
 				})
 			})
 		})
-
 	})
 
 	ginkgo.Context("Multi conditions match", func() {
@@ -177,6 +183,12 @@ var _ = framework.SerialDescribe("Taint cluster with ClusterTaintPolicy", func()
 			ginkgo.By(fmt.Sprintf("wait for the cluster(%s) taint added", targetClusterName), func() {
 				framework.WaitClusterFitWith(controlPlaneClient, targetClusterName, func(cluster *clusterv1alpha1.Cluster) bool {
 					return helper.TaintExists(cluster.Spec.Taints, &corev1.Taint{Key: "testing/all-not-ready", Effect: "NoSchedule"})
+				})
+			})
+
+			ginkgo.By(fmt.Sprintf("wait for TaintClusterSucceed event on cluster(%s)", targetClusterName), func() {
+				framework.WaitEventFitWith(kubeClient, "default", targetClusterName, func(event corev1.Event) bool {
+					return event.Reason == events.EventReasonTaintClusterSucceed
 				})
 			})
 
@@ -249,6 +261,12 @@ var _ = framework.SerialDescribe("Taint cluster with ClusterTaintPolicy", func()
 				framework.WaitClusterFitWith(controlPlaneClient, targetClusterName, func(cluster *clusterv1alpha1.Cluster) bool {
 					return helper.TaintExists(cluster.Spec.Taints, &corev1.Taint{Key: "testing/network-not-ready", Effect: "NoSchedule"}) &&
 						helper.TaintExists(cluster.Spec.Taints, &corev1.Taint{Key: "testing/network-not-ready", Effect: "NoExecute"})
+				})
+			})
+
+			ginkgo.By(fmt.Sprintf("wait for TaintClusterSucceed event on cluster(%s)", targetClusterName), func() {
+				framework.WaitEventFitWith(kubeClient, "default", targetClusterName, func(event corev1.Event) bool {
+					return event.Reason == events.EventReasonTaintClusterSucceed
 				})
 			})
 
