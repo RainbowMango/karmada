@@ -43,6 +43,18 @@ type ReplicaEstimator interface {
 	MaxAvailableComponentSets(ctx context.Context, req ComponentSetEstimationRequest) ([]ComponentSetEstimationResponse, error)
 }
 
+// AssumedWorkload represents the resource footprint of an in-flight workload set that has
+// been assigned to a cluster but whose pods have not yet been bound to nodes.
+// Callers populate this from the scheduler's assumption cache; estimator implementations
+// are responsible for converting it to the wire format (e.g., pb.AssumedWorkload) internally.
+type AssumedWorkload struct {
+	// Namespace is the namespace of the assumed workload.
+	Namespace string
+	// Components lists the component types and their per-replica resource requirements
+	// that are assumed on the target cluster.
+	Components []workv1alpha2.Component
+}
+
 // ComponentSetEstimationRequest carries input parameters for estimating multi-component set availability per cluster.
 // Fields can be extended over time without changing the method signature.
 type ComponentSetEstimationRequest struct {
@@ -54,6 +66,12 @@ type ComponentSetEstimationRequest struct {
 	// It is used by the accurate estimator to check the quota configurations
 	// in the target member cluster. This field is required for quota-aware estimation.
 	Namespace string
+	// AssumedWorkloads lists in-flight workloads that have already been assigned
+	// to a cluster but whose pods have not yet been bound to nodes.
+	// The estimator deducts their resource footprint from the available capacity
+	// to avoid over-commitment during back-to-back scheduling cycles.
+	// +optional
+	AssumedWorkloads []AssumedWorkload
 }
 
 // ComponentSetEstimationResponse represents how many complete component sets a cluster can accommodate.

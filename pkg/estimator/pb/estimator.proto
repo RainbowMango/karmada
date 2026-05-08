@@ -65,6 +65,22 @@ message ComponentReplicaRequirements {
   map<string, bytes> resourceRequestBytes = 4;
 }
 
+// AssumedWorkload represents an in-flight workload that has already been assigned
+// to a cluster by the scheduler but whose pods have not yet been bound to nodes.
+// It is included in estimation requests so the estimator can deduct the assumed
+// resource footprint from the cluster's available capacity, preventing over-commitment
+// when workloads are scheduled in rapid succession.
+message AssumedWorkload {
+  // Namespace is the namespace of the assumed workload.
+  // +required
+  string namespace = 1;
+
+  // Components lists the component types and their replica counts that are assumed.
+  // Each entry corresponds to one component of the in-flight workload set.
+  // +required
+  repeated Component components = 2;
+}
+
 // MaxAvailableComponentSetsRequest is the gRPC request message used to estimate
 // how many complete sets of components can be scheduled on a cluster.
 message MaxAvailableComponentSetsRequest {
@@ -82,6 +98,13 @@ message MaxAvailableComponentSetsRequest {
   // in the target member cluster.
   // +required
   string namespace = 3;
+
+  // AssumedWorkloads lists in-flight workloads that have already been assigned
+  // to this cluster but whose pods have not yet been bound to nodes.
+  // The estimator deducts their resource footprint from the available capacity
+  // to avoid over-commitment during back-to-back scheduling cycles.
+  // +optional
+  repeated AssumedWorkload assumedWorkloads = 4;
 }
 
 // MaxAvailableComponentSetsResponse is the gRPC response message containing the
