@@ -41,7 +41,7 @@ jobs:
           large-packages: false
           docker-images: false
           swap-storage: false
-      
+
       - name: Checkout
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
@@ -126,3 +126,20 @@ jobs:
           
           ct install --target-branch ${{ github.event.repository.default_branch }} --charts charts/karmada --debug --helm-extra-set-args '--set components={search,metricsAdapter,descheduler},apiServer.hostNetwork=true' --helm-extra-args "--timeout 800s" --skip-clean-up
           kubectl get pods -A
+
+      - name: Run karmada-operator chart installation test
+        run: |
+          export KUBECONFIG=~/.kube/karmada.config
+
+          # Install the karmada-operator chart. This validates that the chart installs
+          # successfully and that the CRD is also installed
+          helm install karmada-operator --dependency-update ./charts/karmada-operator --namespace karmada-operator-system --create-namespace --timeout 300s
+
+          # Verify the CRD was created (by default, the chart should install the CRD).
+          kubectl get crd karmadas.operator.karmada.io
+
+          # Uninstall the chart and verify the CRD survives. 
+          # This is critical — deleting the CRD would
+          # cascade-delete all Karmada custom resources in the cluster.
+          helm uninstall karmada-operator --namespace karmada-operator-system
+          kubectl get crd karmadas.operator.karmada.io
