@@ -31,6 +31,7 @@ import (
 	"k8s.io/cli-runtime/pkg/genericclioptions"
 	"k8s.io/cli-runtime/pkg/genericiooptions"
 	"k8s.io/cli-runtime/pkg/printers"
+	"k8s.io/client-go/rest"
 	"k8s.io/kubectl/pkg/cmd/apiresources"
 	cmdutil "k8s.io/kubectl/pkg/cmd/util"
 	"k8s.io/kubectl/pkg/polymorphichelpers"
@@ -43,6 +44,20 @@ import (
 )
 
 var factory util.Factory
+
+type timeoutRESTClientGetter struct {
+	genericclioptions.RESTClientGetter
+	timeout time.Duration
+}
+
+func (g *timeoutRESTClientGetter) ToRESTConfig() (*rest.Config, error) {
+	cfg, err := g.RESTClientGetter.ToRESTConfig()
+	if err != nil {
+		return nil, err
+	}
+	cfg.Timeout = g.timeout
+	return cfg, nil
+}
 
 // SetFactoryForCompletion Store the factory which is needed by the completion functions.
 // Not all commands have access to the factory, so cannot pass it to the completion functions.
@@ -256,7 +271,7 @@ func compGetResourceList(restClientGetter genericclioptions.RESTClientGetter, cm
 	o.PrintFlags.OutputFormat = ptr.To("name")
 	o.Cached = true
 	o.Verbs = []string{"get"}
-	// TODO: Should set --request-timeout=5s
+	restClientGetter = &timeoutRESTClientGetter{RESTClientGetter: restClientGetter, timeout: 5 * time.Second}
 
 	if err := o.Complete(restClientGetter, cmd, nil); err != nil {
 		return nil
