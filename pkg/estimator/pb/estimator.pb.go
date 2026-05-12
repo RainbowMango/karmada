@@ -192,6 +192,68 @@ func (x *ComponentReplicaRequirements) GetResourceRequestBytes() map[string][]by
 	return nil
 }
 
+// AssumedWorkload represents an in-flight workload that has already been assigned
+// to a cluster by the scheduler but whose pods have not yet been bound to nodes.
+// It is included in estimation requests so the estimator can deduct the assumed
+// resource footprint from the cluster's available capacity, preventing over-commitment
+// when workloads are scheduled in rapid succession.
+type AssumedWorkload struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Namespace is the namespace of the assumed workload.
+	// +required
+	Namespace string `protobuf:"bytes,1,opt,name=namespace,proto3" json:"namespace,omitempty"`
+	// Components lists the component types and their replica counts that are assumed.
+	// Each entry corresponds to one component of the in-flight workload set.
+	// +required
+	Components    []*Component `protobuf:"bytes,2,rep,name=components,proto3" json:"components,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *AssumedWorkload) Reset() {
+	*x = AssumedWorkload{}
+	mi := &file_pkg_estimator_pb_estimator_proto_msgTypes[2]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AssumedWorkload) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AssumedWorkload) ProtoMessage() {}
+
+func (x *AssumedWorkload) ProtoReflect() protoreflect.Message {
+	mi := &file_pkg_estimator_pb_estimator_proto_msgTypes[2]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AssumedWorkload.ProtoReflect.Descriptor instead.
+func (*AssumedWorkload) Descriptor() ([]byte, []int) {
+	return file_pkg_estimator_pb_estimator_proto_rawDescGZIP(), []int{2}
+}
+
+func (x *AssumedWorkload) GetNamespace() string {
+	if x != nil {
+		return x.Namespace
+	}
+	return ""
+}
+
+func (x *AssumedWorkload) GetComponents() []*Component {
+	if x != nil {
+		return x.Components
+	}
+	return nil
+}
+
 // MaxAvailableComponentSetsRequest is the gRPC request message used to estimate
 // how many complete sets of components can be scheduled on a cluster.
 type MaxAvailableComponentSetsRequest struct {
@@ -207,14 +269,20 @@ type MaxAvailableComponentSetsRequest struct {
 	// It is used by the accurate estimator to check the quota configurations
 	// in the target member cluster.
 	// +required
-	Namespace     string `protobuf:"bytes,3,opt,name=namespace,proto3" json:"namespace,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	Namespace string `protobuf:"bytes,3,opt,name=namespace,proto3" json:"namespace,omitempty"`
+	// AssumedWorkloads lists in-flight workloads that have already been assigned
+	// to this cluster but whose pods have not yet been bound to nodes.
+	// The estimator deducts their resource footprint from the available capacity
+	// to avoid over-commitment during back-to-back scheduling cycles.
+	// +optional
+	AssumedWorkloads []*AssumedWorkload `protobuf:"bytes,4,rep,name=assumedWorkloads,proto3" json:"assumedWorkloads,omitempty"`
+	unknownFields    protoimpl.UnknownFields
+	sizeCache        protoimpl.SizeCache
 }
 
 func (x *MaxAvailableComponentSetsRequest) Reset() {
 	*x = MaxAvailableComponentSetsRequest{}
-	mi := &file_pkg_estimator_pb_estimator_proto_msgTypes[2]
+	mi := &file_pkg_estimator_pb_estimator_proto_msgTypes[3]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -226,7 +294,7 @@ func (x *MaxAvailableComponentSetsRequest) String() string {
 func (*MaxAvailableComponentSetsRequest) ProtoMessage() {}
 
 func (x *MaxAvailableComponentSetsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_pkg_estimator_pb_estimator_proto_msgTypes[2]
+	mi := &file_pkg_estimator_pb_estimator_proto_msgTypes[3]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -239,7 +307,7 @@ func (x *MaxAvailableComponentSetsRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use MaxAvailableComponentSetsRequest.ProtoReflect.Descriptor instead.
 func (*MaxAvailableComponentSetsRequest) Descriptor() ([]byte, []int) {
-	return file_pkg_estimator_pb_estimator_proto_rawDescGZIP(), []int{2}
+	return file_pkg_estimator_pb_estimator_proto_rawDescGZIP(), []int{3}
 }
 
 func (x *MaxAvailableComponentSetsRequest) GetCluster() string {
@@ -263,6 +331,13 @@ func (x *MaxAvailableComponentSetsRequest) GetNamespace() string {
 	return ""
 }
 
+func (x *MaxAvailableComponentSetsRequest) GetAssumedWorkloads() []*AssumedWorkload {
+	if x != nil {
+		return x.AssumedWorkloads
+	}
+	return nil
+}
+
 // MaxAvailableComponentSetsResponse is the gRPC response message containing the
 // maximum number of complete component sets that can be scheduled.
 type MaxAvailableComponentSetsResponse struct {
@@ -277,7 +352,7 @@ type MaxAvailableComponentSetsResponse struct {
 
 func (x *MaxAvailableComponentSetsResponse) Reset() {
 	*x = MaxAvailableComponentSetsResponse{}
-	mi := &file_pkg_estimator_pb_estimator_proto_msgTypes[3]
+	mi := &file_pkg_estimator_pb_estimator_proto_msgTypes[4]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -289,7 +364,7 @@ func (x *MaxAvailableComponentSetsResponse) String() string {
 func (*MaxAvailableComponentSetsResponse) ProtoMessage() {}
 
 func (x *MaxAvailableComponentSetsResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_pkg_estimator_pb_estimator_proto_msgTypes[3]
+	mi := &file_pkg_estimator_pb_estimator_proto_msgTypes[4]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -302,7 +377,7 @@ func (x *MaxAvailableComponentSetsResponse) ProtoReflect() protoreflect.Message 
 
 // Deprecated: Use MaxAvailableComponentSetsResponse.ProtoReflect.Descriptor instead.
 func (*MaxAvailableComponentSetsResponse) Descriptor() ([]byte, []int) {
-	return file_pkg_estimator_pb_estimator_proto_rawDescGZIP(), []int{3}
+	return file_pkg_estimator_pb_estimator_proto_rawDescGZIP(), []int{4}
 }
 
 func (x *MaxAvailableComponentSetsResponse) GetMaxSets() int32 {
@@ -327,7 +402,7 @@ type MaxAvailableReplicasRequest struct {
 
 func (x *MaxAvailableReplicasRequest) Reset() {
 	*x = MaxAvailableReplicasRequest{}
-	mi := &file_pkg_estimator_pb_estimator_proto_msgTypes[4]
+	mi := &file_pkg_estimator_pb_estimator_proto_msgTypes[5]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -339,7 +414,7 @@ func (x *MaxAvailableReplicasRequest) String() string {
 func (*MaxAvailableReplicasRequest) ProtoMessage() {}
 
 func (x *MaxAvailableReplicasRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_pkg_estimator_pb_estimator_proto_msgTypes[4]
+	mi := &file_pkg_estimator_pb_estimator_proto_msgTypes[5]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -352,7 +427,7 @@ func (x *MaxAvailableReplicasRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use MaxAvailableReplicasRequest.ProtoReflect.Descriptor instead.
 func (*MaxAvailableReplicasRequest) Descriptor() ([]byte, []int) {
-	return file_pkg_estimator_pb_estimator_proto_rawDescGZIP(), []int{4}
+	return file_pkg_estimator_pb_estimator_proto_rawDescGZIP(), []int{5}
 }
 
 func (x *MaxAvailableReplicasRequest) GetCluster() string {
@@ -381,7 +456,7 @@ type MaxAvailableReplicasResponse struct {
 
 func (x *MaxAvailableReplicasResponse) Reset() {
 	*x = MaxAvailableReplicasResponse{}
-	mi := &file_pkg_estimator_pb_estimator_proto_msgTypes[5]
+	mi := &file_pkg_estimator_pb_estimator_proto_msgTypes[6]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -393,7 +468,7 @@ func (x *MaxAvailableReplicasResponse) String() string {
 func (*MaxAvailableReplicasResponse) ProtoMessage() {}
 
 func (x *MaxAvailableReplicasResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_pkg_estimator_pb_estimator_proto_msgTypes[5]
+	mi := &file_pkg_estimator_pb_estimator_proto_msgTypes[6]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -406,7 +481,7 @@ func (x *MaxAvailableReplicasResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use MaxAvailableReplicasResponse.ProtoReflect.Descriptor instead.
 func (*MaxAvailableReplicasResponse) Descriptor() ([]byte, []int) {
-	return file_pkg_estimator_pb_estimator_proto_rawDescGZIP(), []int{5}
+	return file_pkg_estimator_pb_estimator_proto_rawDescGZIP(), []int{6}
 }
 
 func (x *MaxAvailableReplicasResponse) GetMaxReplicas() int32 {
@@ -456,7 +531,7 @@ type NodeClaim struct {
 
 func (x *NodeClaim) Reset() {
 	*x = NodeClaim{}
-	mi := &file_pkg_estimator_pb_estimator_proto_msgTypes[6]
+	mi := &file_pkg_estimator_pb_estimator_proto_msgTypes[7]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -468,7 +543,7 @@ func (x *NodeClaim) String() string {
 func (*NodeClaim) ProtoMessage() {}
 
 func (x *NodeClaim) ProtoReflect() protoreflect.Message {
-	mi := &file_pkg_estimator_pb_estimator_proto_msgTypes[6]
+	mi := &file_pkg_estimator_pb_estimator_proto_msgTypes[7]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -481,7 +556,7 @@ func (x *NodeClaim) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use NodeClaim.ProtoReflect.Descriptor instead.
 func (*NodeClaim) Descriptor() ([]byte, []int) {
-	return file_pkg_estimator_pb_estimator_proto_rawDescGZIP(), []int{6}
+	return file_pkg_estimator_pb_estimator_proto_rawDescGZIP(), []int{7}
 }
 
 // Deprecated: Marked as deprecated in pkg/estimator/pb/estimator.proto.
@@ -545,7 +620,7 @@ type ObjectReference struct {
 
 func (x *ObjectReference) Reset() {
 	*x = ObjectReference{}
-	mi := &file_pkg_estimator_pb_estimator_proto_msgTypes[7]
+	mi := &file_pkg_estimator_pb_estimator_proto_msgTypes[8]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -557,7 +632,7 @@ func (x *ObjectReference) String() string {
 func (*ObjectReference) ProtoMessage() {}
 
 func (x *ObjectReference) ProtoReflect() protoreflect.Message {
-	mi := &file_pkg_estimator_pb_estimator_proto_msgTypes[7]
+	mi := &file_pkg_estimator_pb_estimator_proto_msgTypes[8]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -570,7 +645,7 @@ func (x *ObjectReference) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ObjectReference.ProtoReflect.Descriptor instead.
 func (*ObjectReference) Descriptor() ([]byte, []int) {
-	return file_pkg_estimator_pb_estimator_proto_rawDescGZIP(), []int{7}
+	return file_pkg_estimator_pb_estimator_proto_rawDescGZIP(), []int{8}
 }
 
 func (x *ObjectReference) GetApiVersion() string {
@@ -632,7 +707,7 @@ type ReplicaRequirements struct {
 
 func (x *ReplicaRequirements) Reset() {
 	*x = ReplicaRequirements{}
-	mi := &file_pkg_estimator_pb_estimator_proto_msgTypes[8]
+	mi := &file_pkg_estimator_pb_estimator_proto_msgTypes[9]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -644,7 +719,7 @@ func (x *ReplicaRequirements) String() string {
 func (*ReplicaRequirements) ProtoMessage() {}
 
 func (x *ReplicaRequirements) ProtoReflect() protoreflect.Message {
-	mi := &file_pkg_estimator_pb_estimator_proto_msgTypes[8]
+	mi := &file_pkg_estimator_pb_estimator_proto_msgTypes[9]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -657,7 +732,7 @@ func (x *ReplicaRequirements) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ReplicaRequirements.ProtoReflect.Descriptor instead.
 func (*ReplicaRequirements) Descriptor() ([]byte, []int) {
-	return file_pkg_estimator_pb_estimator_proto_rawDescGZIP(), []int{8}
+	return file_pkg_estimator_pb_estimator_proto_rawDescGZIP(), []int{9}
 }
 
 func (x *ReplicaRequirements) GetNodeClaim() *NodeClaim {
@@ -715,7 +790,7 @@ type UnschedulableReplicasRequest struct {
 
 func (x *UnschedulableReplicasRequest) Reset() {
 	*x = UnschedulableReplicasRequest{}
-	mi := &file_pkg_estimator_pb_estimator_proto_msgTypes[9]
+	mi := &file_pkg_estimator_pb_estimator_proto_msgTypes[10]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -727,7 +802,7 @@ func (x *UnschedulableReplicasRequest) String() string {
 func (*UnschedulableReplicasRequest) ProtoMessage() {}
 
 func (x *UnschedulableReplicasRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_pkg_estimator_pb_estimator_proto_msgTypes[9]
+	mi := &file_pkg_estimator_pb_estimator_proto_msgTypes[10]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -740,7 +815,7 @@ func (x *UnschedulableReplicasRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use UnschedulableReplicasRequest.ProtoReflect.Descriptor instead.
 func (*UnschedulableReplicasRequest) Descriptor() ([]byte, []int) {
-	return file_pkg_estimator_pb_estimator_proto_rawDescGZIP(), []int{9}
+	return file_pkg_estimator_pb_estimator_proto_rawDescGZIP(), []int{10}
 }
 
 func (x *UnschedulableReplicasRequest) GetCluster() string {
@@ -776,7 +851,7 @@ type UnschedulableReplicasResponse struct {
 
 func (x *UnschedulableReplicasResponse) Reset() {
 	*x = UnschedulableReplicasResponse{}
-	mi := &file_pkg_estimator_pb_estimator_proto_msgTypes[10]
+	mi := &file_pkg_estimator_pb_estimator_proto_msgTypes[11]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -788,7 +863,7 @@ func (x *UnschedulableReplicasResponse) String() string {
 func (*UnschedulableReplicasResponse) ProtoMessage() {}
 
 func (x *UnschedulableReplicasResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_pkg_estimator_pb_estimator_proto_msgTypes[10]
+	mi := &file_pkg_estimator_pb_estimator_proto_msgTypes[11]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -801,7 +876,7 @@ func (x *UnschedulableReplicasResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use UnschedulableReplicasResponse.ProtoReflect.Descriptor instead.
 func (*UnschedulableReplicasResponse) Descriptor() ([]byte, []int) {
-	return file_pkg_estimator_pb_estimator_proto_rawDescGZIP(), []int{10}
+	return file_pkg_estimator_pb_estimator_proto_rawDescGZIP(), []int{11}
 }
 
 func (x *UnschedulableReplicasResponse) GetUnschedulableReplicas() int32 {
@@ -832,13 +907,19 @@ const file_pkg_estimator_pb_estimator_proto_rawDesc = "" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
 	"\x05value\x18\x02 \x01(\fR\x05value:\x028\x01B\f\n" +
 	"\n" +
-	"_nodeClaim\"\xb5\x01\n" +
+	"_nodeClaim\"\x8a\x01\n" +
+	"\x0fAssumedWorkload\x12\x1c\n" +
+	"\tnamespace\x18\x01 \x01(\tR\tnamespace\x12Y\n" +
+	"\n" +
+	"components\x18\x02 \x03(\v29.github.com.karmada_io.karmada.pkg.estimator.pb.ComponentR\n" +
+	"components\"\xa2\x02\n" +
 	" MaxAvailableComponentSetsRequest\x12\x18\n" +
 	"\acluster\x18\x01 \x01(\tR\acluster\x12Y\n" +
 	"\n" +
 	"components\x18\x02 \x03(\v29.github.com.karmada_io.karmada.pkg.estimator.pb.ComponentR\n" +
 	"components\x12\x1c\n" +
-	"\tnamespace\x18\x03 \x01(\tR\tnamespace\"=\n" +
+	"\tnamespace\x18\x03 \x01(\tR\tnamespace\x12k\n" +
+	"\x10assumedWorkloads\x18\x04 \x03(\v2?.github.com.karmada_io.karmada.pkg.estimator.pb.AssumedWorkloadR\x10assumedWorkloads\"=\n" +
 	"!MaxAvailableComponentSetsResponse\x12\x18\n" +
 	"\amaxSets\x18\x01 \x01(\x05R\amaxSets\"\xae\x01\n" +
 	"\x1bMaxAvailableReplicasRequest\x12\x18\n" +
@@ -896,49 +977,52 @@ func file_pkg_estimator_pb_estimator_proto_rawDescGZIP() []byte {
 	return file_pkg_estimator_pb_estimator_proto_rawDescData
 }
 
-var file_pkg_estimator_pb_estimator_proto_msgTypes = make([]protoimpl.MessageInfo, 16)
+var file_pkg_estimator_pb_estimator_proto_msgTypes = make([]protoimpl.MessageInfo, 17)
 var file_pkg_estimator_pb_estimator_proto_goTypes = []any{
 	(*Component)(nil),                         // 0: github.com.karmada_io.karmada.pkg.estimator.pb.Component
 	(*ComponentReplicaRequirements)(nil),      // 1: github.com.karmada_io.karmada.pkg.estimator.pb.ComponentReplicaRequirements
-	(*MaxAvailableComponentSetsRequest)(nil),  // 2: github.com.karmada_io.karmada.pkg.estimator.pb.MaxAvailableComponentSetsRequest
-	(*MaxAvailableComponentSetsResponse)(nil), // 3: github.com.karmada_io.karmada.pkg.estimator.pb.MaxAvailableComponentSetsResponse
-	(*MaxAvailableReplicasRequest)(nil),       // 4: github.com.karmada_io.karmada.pkg.estimator.pb.MaxAvailableReplicasRequest
-	(*MaxAvailableReplicasResponse)(nil),      // 5: github.com.karmada_io.karmada.pkg.estimator.pb.MaxAvailableReplicasResponse
-	(*NodeClaim)(nil),                         // 6: github.com.karmada_io.karmada.pkg.estimator.pb.NodeClaim
-	(*ObjectReference)(nil),                   // 7: github.com.karmada_io.karmada.pkg.estimator.pb.ObjectReference
-	(*ReplicaRequirements)(nil),               // 8: github.com.karmada_io.karmada.pkg.estimator.pb.ReplicaRequirements
-	(*UnschedulableReplicasRequest)(nil),      // 9: github.com.karmada_io.karmada.pkg.estimator.pb.UnschedulableReplicasRequest
-	(*UnschedulableReplicasResponse)(nil),     // 10: github.com.karmada_io.karmada.pkg.estimator.pb.UnschedulableReplicasResponse
-	nil,                                       // 11: github.com.karmada_io.karmada.pkg.estimator.pb.ComponentReplicaRequirements.ResourceRequestEntry
-	nil,                                       // 12: github.com.karmada_io.karmada.pkg.estimator.pb.ComponentReplicaRequirements.ResourceRequestBytesEntry
-	nil,                                       // 13: github.com.karmada_io.karmada.pkg.estimator.pb.NodeClaim.NodeSelectorEntry
-	nil,                                       // 14: github.com.karmada_io.karmada.pkg.estimator.pb.ReplicaRequirements.ResourceRequestEntry
-	nil,                                       // 15: github.com.karmada_io.karmada.pkg.estimator.pb.ReplicaRequirements.ResourceRequestBytesEntry
-	(*v1.NodeSelector)(nil),                   // 16: k8s.io.api.core.v1.NodeSelector
-	(*v1.Toleration)(nil),                     // 17: k8s.io.api.core.v1.Toleration
-	(*resource.Quantity)(nil),                 // 18: k8s.io.apimachinery.pkg.api.resource.Quantity
+	(*AssumedWorkload)(nil),                   // 2: github.com.karmada_io.karmada.pkg.estimator.pb.AssumedWorkload
+	(*MaxAvailableComponentSetsRequest)(nil),  // 3: github.com.karmada_io.karmada.pkg.estimator.pb.MaxAvailableComponentSetsRequest
+	(*MaxAvailableComponentSetsResponse)(nil), // 4: github.com.karmada_io.karmada.pkg.estimator.pb.MaxAvailableComponentSetsResponse
+	(*MaxAvailableReplicasRequest)(nil),       // 5: github.com.karmada_io.karmada.pkg.estimator.pb.MaxAvailableReplicasRequest
+	(*MaxAvailableReplicasResponse)(nil),      // 6: github.com.karmada_io.karmada.pkg.estimator.pb.MaxAvailableReplicasResponse
+	(*NodeClaim)(nil),                         // 7: github.com.karmada_io.karmada.pkg.estimator.pb.NodeClaim
+	(*ObjectReference)(nil),                   // 8: github.com.karmada_io.karmada.pkg.estimator.pb.ObjectReference
+	(*ReplicaRequirements)(nil),               // 9: github.com.karmada_io.karmada.pkg.estimator.pb.ReplicaRequirements
+	(*UnschedulableReplicasRequest)(nil),      // 10: github.com.karmada_io.karmada.pkg.estimator.pb.UnschedulableReplicasRequest
+	(*UnschedulableReplicasResponse)(nil),     // 11: github.com.karmada_io.karmada.pkg.estimator.pb.UnschedulableReplicasResponse
+	nil,                                       // 12: github.com.karmada_io.karmada.pkg.estimator.pb.ComponentReplicaRequirements.ResourceRequestEntry
+	nil,                                       // 13: github.com.karmada_io.karmada.pkg.estimator.pb.ComponentReplicaRequirements.ResourceRequestBytesEntry
+	nil,                                       // 14: github.com.karmada_io.karmada.pkg.estimator.pb.NodeClaim.NodeSelectorEntry
+	nil,                                       // 15: github.com.karmada_io.karmada.pkg.estimator.pb.ReplicaRequirements.ResourceRequestEntry
+	nil,                                       // 16: github.com.karmada_io.karmada.pkg.estimator.pb.ReplicaRequirements.ResourceRequestBytesEntry
+	(*v1.NodeSelector)(nil),                   // 17: k8s.io.api.core.v1.NodeSelector
+	(*v1.Toleration)(nil),                     // 18: k8s.io.api.core.v1.Toleration
+	(*resource.Quantity)(nil),                 // 19: k8s.io.apimachinery.pkg.api.resource.Quantity
 }
 var file_pkg_estimator_pb_estimator_proto_depIdxs = []int32{
 	1,  // 0: github.com.karmada_io.karmada.pkg.estimator.pb.Component.replicaRequirements:type_name -> github.com.karmada_io.karmada.pkg.estimator.pb.ComponentReplicaRequirements
-	6,  // 1: github.com.karmada_io.karmada.pkg.estimator.pb.ComponentReplicaRequirements.nodeClaim:type_name -> github.com.karmada_io.karmada.pkg.estimator.pb.NodeClaim
-	11, // 2: github.com.karmada_io.karmada.pkg.estimator.pb.ComponentReplicaRequirements.resourceRequest:type_name -> github.com.karmada_io.karmada.pkg.estimator.pb.ComponentReplicaRequirements.ResourceRequestEntry
-	12, // 3: github.com.karmada_io.karmada.pkg.estimator.pb.ComponentReplicaRequirements.resourceRequestBytes:type_name -> github.com.karmada_io.karmada.pkg.estimator.pb.ComponentReplicaRequirements.ResourceRequestBytesEntry
-	0,  // 4: github.com.karmada_io.karmada.pkg.estimator.pb.MaxAvailableComponentSetsRequest.components:type_name -> github.com.karmada_io.karmada.pkg.estimator.pb.Component
-	8,  // 5: github.com.karmada_io.karmada.pkg.estimator.pb.MaxAvailableReplicasRequest.replicaRequirements:type_name -> github.com.karmada_io.karmada.pkg.estimator.pb.ReplicaRequirements
-	16, // 6: github.com.karmada_io.karmada.pkg.estimator.pb.NodeClaim.nodeAffinity:type_name -> k8s.io.api.core.v1.NodeSelector
-	13, // 7: github.com.karmada_io.karmada.pkg.estimator.pb.NodeClaim.nodeSelector:type_name -> github.com.karmada_io.karmada.pkg.estimator.pb.NodeClaim.NodeSelectorEntry
-	17, // 8: github.com.karmada_io.karmada.pkg.estimator.pb.NodeClaim.tolerations:type_name -> k8s.io.api.core.v1.Toleration
-	6,  // 9: github.com.karmada_io.karmada.pkg.estimator.pb.ReplicaRequirements.nodeClaim:type_name -> github.com.karmada_io.karmada.pkg.estimator.pb.NodeClaim
-	14, // 10: github.com.karmada_io.karmada.pkg.estimator.pb.ReplicaRequirements.resourceRequest:type_name -> github.com.karmada_io.karmada.pkg.estimator.pb.ReplicaRequirements.ResourceRequestEntry
-	15, // 11: github.com.karmada_io.karmada.pkg.estimator.pb.ReplicaRequirements.resourceRequestBytes:type_name -> github.com.karmada_io.karmada.pkg.estimator.pb.ReplicaRequirements.ResourceRequestBytesEntry
-	7,  // 12: github.com.karmada_io.karmada.pkg.estimator.pb.UnschedulableReplicasRequest.resource:type_name -> github.com.karmada_io.karmada.pkg.estimator.pb.ObjectReference
-	18, // 13: github.com.karmada_io.karmada.pkg.estimator.pb.ComponentReplicaRequirements.ResourceRequestEntry.value:type_name -> k8s.io.apimachinery.pkg.api.resource.Quantity
-	18, // 14: github.com.karmada_io.karmada.pkg.estimator.pb.ReplicaRequirements.ResourceRequestEntry.value:type_name -> k8s.io.apimachinery.pkg.api.resource.Quantity
-	15, // [15:15] is the sub-list for method output_type
-	15, // [15:15] is the sub-list for method input_type
-	15, // [15:15] is the sub-list for extension type_name
-	15, // [15:15] is the sub-list for extension extendee
-	0,  // [0:15] is the sub-list for field type_name
+	7,  // 1: github.com.karmada_io.karmada.pkg.estimator.pb.ComponentReplicaRequirements.nodeClaim:type_name -> github.com.karmada_io.karmada.pkg.estimator.pb.NodeClaim
+	12, // 2: github.com.karmada_io.karmada.pkg.estimator.pb.ComponentReplicaRequirements.resourceRequest:type_name -> github.com.karmada_io.karmada.pkg.estimator.pb.ComponentReplicaRequirements.ResourceRequestEntry
+	13, // 3: github.com.karmada_io.karmada.pkg.estimator.pb.ComponentReplicaRequirements.resourceRequestBytes:type_name -> github.com.karmada_io.karmada.pkg.estimator.pb.ComponentReplicaRequirements.ResourceRequestBytesEntry
+	0,  // 4: github.com.karmada_io.karmada.pkg.estimator.pb.AssumedWorkload.components:type_name -> github.com.karmada_io.karmada.pkg.estimator.pb.Component
+	0,  // 5: github.com.karmada_io.karmada.pkg.estimator.pb.MaxAvailableComponentSetsRequest.components:type_name -> github.com.karmada_io.karmada.pkg.estimator.pb.Component
+	2,  // 6: github.com.karmada_io.karmada.pkg.estimator.pb.MaxAvailableComponentSetsRequest.assumedWorkloads:type_name -> github.com.karmada_io.karmada.pkg.estimator.pb.AssumedWorkload
+	9,  // 7: github.com.karmada_io.karmada.pkg.estimator.pb.MaxAvailableReplicasRequest.replicaRequirements:type_name -> github.com.karmada_io.karmada.pkg.estimator.pb.ReplicaRequirements
+	17, // 8: github.com.karmada_io.karmada.pkg.estimator.pb.NodeClaim.nodeAffinity:type_name -> k8s.io.api.core.v1.NodeSelector
+	14, // 9: github.com.karmada_io.karmada.pkg.estimator.pb.NodeClaim.nodeSelector:type_name -> github.com.karmada_io.karmada.pkg.estimator.pb.NodeClaim.NodeSelectorEntry
+	18, // 10: github.com.karmada_io.karmada.pkg.estimator.pb.NodeClaim.tolerations:type_name -> k8s.io.api.core.v1.Toleration
+	7,  // 11: github.com.karmada_io.karmada.pkg.estimator.pb.ReplicaRequirements.nodeClaim:type_name -> github.com.karmada_io.karmada.pkg.estimator.pb.NodeClaim
+	15, // 12: github.com.karmada_io.karmada.pkg.estimator.pb.ReplicaRequirements.resourceRequest:type_name -> github.com.karmada_io.karmada.pkg.estimator.pb.ReplicaRequirements.ResourceRequestEntry
+	16, // 13: github.com.karmada_io.karmada.pkg.estimator.pb.ReplicaRequirements.resourceRequestBytes:type_name -> github.com.karmada_io.karmada.pkg.estimator.pb.ReplicaRequirements.ResourceRequestBytesEntry
+	8,  // 14: github.com.karmada_io.karmada.pkg.estimator.pb.UnschedulableReplicasRequest.resource:type_name -> github.com.karmada_io.karmada.pkg.estimator.pb.ObjectReference
+	19, // 15: github.com.karmada_io.karmada.pkg.estimator.pb.ComponentReplicaRequirements.ResourceRequestEntry.value:type_name -> k8s.io.apimachinery.pkg.api.resource.Quantity
+	19, // 16: github.com.karmada_io.karmada.pkg.estimator.pb.ReplicaRequirements.ResourceRequestEntry.value:type_name -> k8s.io.apimachinery.pkg.api.resource.Quantity
+	17, // [17:17] is the sub-list for method output_type
+	17, // [17:17] is the sub-list for method input_type
+	17, // [17:17] is the sub-list for extension type_name
+	17, // [17:17] is the sub-list for extension extendee
+	0,  // [0:17] is the sub-list for field type_name
 }
 
 func init() { file_pkg_estimator_pb_estimator_proto_init() }
@@ -947,15 +1031,15 @@ func file_pkg_estimator_pb_estimator_proto_init() {
 		return
 	}
 	file_pkg_estimator_pb_estimator_proto_msgTypes[1].OneofWrappers = []any{}
-	file_pkg_estimator_pb_estimator_proto_msgTypes[6].OneofWrappers = []any{}
-	file_pkg_estimator_pb_estimator_proto_msgTypes[8].OneofWrappers = []any{}
+	file_pkg_estimator_pb_estimator_proto_msgTypes[7].OneofWrappers = []any{}
+	file_pkg_estimator_pb_estimator_proto_msgTypes[9].OneofWrappers = []any{}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_pkg_estimator_pb_estimator_proto_rawDesc), len(file_pkg_estimator_pb_estimator_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   16,
+			NumMessages:   17,
 			NumExtensions: 0,
 			NumServices:   0,
 		},
