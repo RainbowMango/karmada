@@ -36,6 +36,7 @@ import (
 
 	clusterv1alpha1 "github.com/karmada-io/karmada/pkg/apis/cluster/v1alpha1"
 	policyv1alpha1 "github.com/karmada-io/karmada/pkg/apis/policy/v1alpha1"
+	"github.com/karmada-io/karmada/pkg/events"
 	"github.com/karmada-io/karmada/pkg/util/helper"
 	"github.com/karmada-io/karmada/test/e2e/framework"
 	testhelper "github.com/karmada-io/karmada/test/helper"
@@ -184,6 +185,13 @@ var _ = framework.SerialDescribe("cluster failover testing", func() {
 
 					return len(currentClusters)
 				}, pollTimeout, pollInterval).Should(gomega.Equal(minGroups))
+			})
+
+			ginkgo.By("checking EvictWorkloadFromClusterSucceed event on deployment", func() {
+				framework.WaitEventFitWith(kubeClient, deploymentNamespace, deploymentName,
+					func(event corev1.Event) bool {
+						return event.Reason == events.EventReasonEvictWorkloadFromClusterSucceed
+					})
 			})
 
 			ginkgo.By(fmt.Sprintf("remove taint %v from the target clusters", taint), func() {
