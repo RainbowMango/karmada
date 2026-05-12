@@ -83,6 +83,9 @@ var _ = framework.SerialDescribe("FederatedResourceQuota auto-provision testing"
 		ginkgo.By("[Create] federatedResourceQuota should be propagated to member clusters", func() {
 			framework.CreateFederatedResourceQuota(karmadaClient, federatedResourceQuota)
 			framework.WaitResourceQuotaPresentOnClusters(clusters, frqNamespace, frqName)
+			framework.WaitEventFitWith(kubeClient, frqNamespace, frqName, func(event corev1.Event) bool {
+				return event.Reason == events.EventReasonSyncFederatedResourceQuotaSucceed
+			})
 		})
 
 		ginkgo.By("[Update] FederatedResourceQuota should be propagated to member clusters according to the new staticAssignments", func() {
@@ -256,6 +259,12 @@ var _ = framework.SerialDescribe("[FederatedResourceQuota] status collection tes
 		ginkgo.It("FederatedResourceQuota status should be collect correctly", func() {
 			framework.CreateFederatedResourceQuota(karmadaClient, federatedResourceQuota)
 			framework.WaitFederatedResourceQuotaCollectStatus(karmadaClient, frqNamespace, frqName)
+			framework.WaitEventFitWith(kubeClient, frqNamespace, frqName, func(event corev1.Event) bool {
+				return event.Reason == events.EventReasonCollectFederatedResourceQuotaStatusSucceed
+			})
+			framework.WaitEventFitWith(kubeClient, frqNamespace, frqName, func(event corev1.Event) bool {
+				return event.Reason == events.EventReasonCollectFederatedResourceQuotaOverallStatusSucceed
+			})
 
 			patch := []map[string]any{
 				{
