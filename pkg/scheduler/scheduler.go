@@ -241,7 +241,7 @@ func NewScheduler(dynamicClient dynamic.Interface, karmadaClient karmadaclientse
 	bindingLister := bindingInformer.Lister()
 	clusterBindingLister := factory.Work().V1alpha2().ClusterResourceBindings().Lister()
 	clusterLister := factory.Cluster().V1alpha1().Clusters().Lister()
-	schedulerCache := schedulercache.NewCache(clusterLister, bindingInformer.Informer().GetIndexer())
+	schedulerCache := schedulercache.NewCache(clusterLister, bindingInformer.Informer().GetIndexer(), schedulercache.DefaultAssumptionTTL)
 
 	options := schedulerOptions{}
 	for _, opt := range opts {
