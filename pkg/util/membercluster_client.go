@@ -23,12 +23,14 @@ import (
 	"net/url"
 	"time"
 
+	"golang.org/x/oauth2"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/dynamic"
 	kubeclientset "k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/scale"
+	"k8s.io/client-go/transport"
 	"k8s.io/client-go/util/flowcontrol"
 	"k8s.io/klog/v2"
 	controllerruntime "sigs.k8s.io/controller-runtime"
@@ -218,9 +220,8 @@ func BuildClusterConfig(clusterName string,
 
 	// Initialize cluster configuration.
 	clusterConfig := &rest.Config{
-		BearerToken: string(token),
-		Host:        apiEndpoint,
-		Timeout:     defaultTimeout,
+		Host:    apiEndpoint,
+		Timeout: defaultTimeout,
 	}
 
 	// Handle TLS configuration.
@@ -248,6 +249,20 @@ func BuildClusterConfig(clusterName string,
 		}
 	}
 
+	// Note: Do NOT set a static BearerToken here. Instead, wrap the transport
+	// with a TokenSource that re-reads the token from the secret periodically,
+	// so long-running clients (e.g. informers) can pick up rotated tokens
+	// without being rebuilt. This follows the same pattern Kubernetes uses
+	// for in-cluster config with BearerTokenFile.
+	// The resettable wrapper also clears the cached token when a request
+	// gets a 401 response, so a revoked token is refreshed quickly.
+	//
+	// Note: This wrap MUST be applied after the proxy header wrap above,
+	// because the proxy header round tripper only works when it directly
+	// wraps the raw *http.Transport, so it must stay innermost in the chain.
+	tokenSource := newSecretTokenSource(clusterName, cluster.Spec.SecretRef.Namespace, cluster.Spec.SecretRef.Name, secretGetter)
+	clusterConfig.Wrap(transport.ResettableTokenSourceWrapTransport(transport.NewCachedTokenSource(tokenSource)))
+
 	return clusterConfig, nil
 }
 
@@ -263,4 +278,50 @@ func secretGetter(client client.Client) func(string, string) (*corev1.Secret, er
 		err := client.Get(context.TODO(), types.NamespacedName{Namespace: namespace, Name: name}, secret)
 		return secret, err
 	}
+}
+
+// secretTokenSource is an oauth2.TokenSource that reads the bearer token
+// from the cluster secret on the Karmada control plane. Each token it
+// returns carries a short expiry, so the caching layer will re-read the
+// secret periodically and rotated tokens take effect automatically.
+type secretTokenSource struct {
+	clusterName     string
+	secretNamespace string
+	secretName      string
+	secretGetter    func(string, string) (*corev1.Secret, error)
+}
+
+// tokenRefreshPeriod controls how long a token fetched from the secret is
+// reused before the secret is read again.
+// One minute is the same period Kubernetes uses to re-read the service
+// account token file (see transport.NewCachedFileTokenSource). And the
+// re-read is served from the local informer cache, so the cost is very low.
+const tokenRefreshPeriod = time.Minute
+
+func newSecretTokenSource(clusterName, secretNamespace, secretName string, secretGetter func(string, string) (*corev1.Secret, error)) oauth2.TokenSource {
+	return &secretTokenSource{
+		clusterName:     clusterName,
+		secretNamespace: secretNamespace,
+		secretName:      secretName,
+		secretGetter:    secretGetter,
+	}
+}
+
+// Token implements oauth2.TokenSource.
+func (s *secretTokenSource) Token() (*oauth2.Token, error) {
+	secret, err := s.secretGetter(s.secretNamespace, s.secretName)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get secret for cluster %s: %v", s.clusterName, err)
+	}
+
+	token, ok := secret.Data[clusterv1alpha1.SecretTokenKey]
+	if !ok || len(token) == 0 {
+		return nil, fmt.Errorf("the secret for cluster %s is missing a non-empty value for %q", s.clusterName, clusterv1alpha1.SecretTokenKey)
+	}
+
+	return &oauth2.Token{
+		AccessToken: string(token),
+		// Set a short expiry so the cache re-reads the secret periodically.
+		Expiry: time.Now().Add(tokenRefreshPeriod),
+	}, nil
 }

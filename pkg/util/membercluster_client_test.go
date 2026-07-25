@@ -20,15 +20,19 @@ import (
 	"bytes"
 	"context"
 	"encoding/pem"
+	"errors"
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"sync/atomic"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/rest"
 	controllerruntime "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -719,3 +723,121 @@ func getCACertFromGTestServer(t *testing.T, s *httptest.Server) []byte {
 	assert.NoError(t, err)
 	return testCA.Bytes()
 }
+
+// TestBuildClusterConfig_TokenRotation verifies the core promise of the
+// dynamic token design: after the token in the secret is rotated (and the
+// old token is revoked), an existing client picks up the new token without
+// being rebuilt. The first request with the revoked token gets a 401, which
+// resets the token cache, so the retry succeeds immediately (no need to
+// wait for the cache refresh period).
+func TestBuildClusterConfig_TokenRotation(t *testing.T) {
+	// validToken simulates the token accepted by the member cluster apiserver.
+	var validToken atomic.Value
+	validToken.Store("token-old")
+
+	s := httptest.NewTLSServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
+		if req.Header.Get("Authorization") != "Bearer "+validToken.Load().(string) {
+			rw.WriteHeader(http.StatusUnauthorized)
+			return
+		}
+		rw.Header().Add("Content-Type", "application/json")
+		_, _ = io.WriteString(rw, `{"apiVersion": "v1", "kind": "Node", "metadata": {"name": "foo"}}`)
+	}))
+	defer s.Close()
+
+	const clusterName = "test"
+	hostClient := fakeclient.NewClientBuilder().WithScheme(gclient.NewSchema()).WithObjects(
+		&clusterv1alpha1.Cluster{
+			ObjectMeta: metav1.ObjectMeta{Name: clusterName},
+			Spec: clusterv1alpha1.ClusterSpec{
+				APIEndpoint: s.URL,
+				SecretRef:   &clusterv1alpha1.LocalSecretReference{Namespace: "ns1", Name: "secret1"},
+			},
+		},
+		&corev1.Secret{
+			ObjectMeta: metav1.ObjectMeta{Namespace: "ns1", Name: "secret1"},
+			Data: map[string][]byte{
+				clusterv1alpha1.SecretTokenKey:  []byte("token-old"),
+				clusterv1alpha1.SecretCADataKey: getCACertFromGTestServer(t, s),
+			},
+		}).Build()
+
+	// Build the client once. It must NOT be rebuilt during the whole test.
+	clusterClient, err := NewClusterClientSet(clusterName, hostClient, nil)
+	assert.NoError(t, err)
+
+	// Step 1: the old token works.
+	_, err = clusterClient.KubeClient.CoreV1().Nodes().Get(context.TODO(), "foo", metav1.GetOptions{})
+	assert.NoError(t, err)
+
+	// Step 2: rotate the token. The apiserver only accepts the new token
+	// now, and the secret on the control plane is updated as well.
+	validToken.Store("token-new")
+	secret := &corev1.Secret{}
+	err = hostClient.Get(context.TODO(), types.NamespacedName{Namespace: "ns1", Name: "secret1"}, secret)
+	assert.NoError(t, err)
+	secret.Data[clusterv1alpha1.SecretTokenKey] = []byte("token-new")
+	err = hostClient.Update(context.TODO(), secret)
+	assert.NoError(t, err)
+
+	// Step 3: the first request still uses the cached old token and gets a
+	// 401, which resets the token cache.
+	_, err = clusterClient.KubeClient.CoreV1().Nodes().Get(context.TODO(), "foo", metav1.GetOptions{})
+	assert.Error(t, err)
+
+	// Step 4: the next request re-reads the secret and succeeds with the
+	// new token. This must happen immediately, NOT after the cache refresh
+	// period, otherwise the 401-triggered reset is broken.
+	_, err = clusterClient.KubeClient.CoreV1().Nodes().Get(context.TODO(), "foo", metav1.GetOptions{})
+	assert.NoError(t, err)
+}
+
+func TestSecretTokenSource_Token(t *testing.T) {
+	tests := []struct {
+		name         string
+		secretGetter func(string, string) (*corev1.Secret, error)
+		wantToken    string
+		wantErr      bool
+	}{
+		{
+			name: "returns token from secret with expiry set",
+			secretGetter: func(string, string) (*corev1.Secret, error) {
+				return &corev1.Secret{
+					Data: map[string][]byte{clusterv1alpha1.SecretTokenKey: []byte("my-token")},
+				}, nil
+			},
+			wantToken: "my-token",
+		},
+		{
+			name: "secret missing token key",
+			secretGetter: func(string, string) (*corev1.Secret, error) {
+				return &corev1.Secret{Data: map[string][]byte{}}, nil
+			},
+			wantErr: true,
+		},
+		{
+			name: "secret getter fails",
+			secretGetter: func(string, string) (*corev1.Secret, error) {
+				return nil, errors.New("not found")
+			},
+			wantErr: true,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			ts := newSecretTokenSource("cluster1", "ns1", "secret1", tt.secretGetter)
+			token, err := ts.Token()
+			if tt.wantErr {
+				assert.Error(t, err)
+				return
+			}
+			assert.NoError(t, err)
+			assert.Equal(t, tt.wantToken, token.AccessToken)
+			// The expiry must be set so the caching layer re-reads the
+			// secret periodically; a zero expiry would cache forever.
+			assert.False(t, token.Expiry.IsZero())
+			assert.LessOrEqual(t, token.Expiry, time.Now().Add(tokenRefreshPeriod))
+		})
+	}
+}
+
