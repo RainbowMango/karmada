@@ -219,17 +219,10 @@ func BuildClusterConfig(clusterName string,
 	}
 
 	// Initialize cluster configuration.
-	// Note: Do NOT set a static BearerToken here. Instead, wrap the transport
-	// with a TokenSource that re-reads the token from the secret periodically,
-	// so long-running clients (e.g. informers) can pick up rotated tokens
-	// without being rebuilt. This follows the same pattern Kubernetes uses
-	// for in-cluster config with BearerTokenFile.
 	clusterConfig := &rest.Config{
 		Host:    apiEndpoint,
 		Timeout: defaultTimeout,
 	}
-	tokenSource := newSecretTokenSource(clusterName, cluster.Spec.SecretRef.Namespace, cluster.Spec.SecretRef.Name, secretGetter)
-	clusterConfig.Wrap(transport.TokenSourceWrapTransport(transport.NewCachedTokenSource(tokenSource)))
 
 	// Handle TLS configuration.
 	if cluster.Spec.InsecureSkipTLSVerification {
@@ -255,6 +248,20 @@ func BuildClusterConfig(clusterName string,
 			clusterConfig.Wrap(NewProxyHeaderRoundTripperWrapperConstructor(clusterConfig.WrapTransport, cluster.Spec.ProxyHeader))
 		}
 	}
+
+	// Note: Do NOT set a static BearerToken here. Instead, wrap the transport
+	// with a TokenSource that re-reads the token from the secret periodically,
+	// so long-running clients (e.g. informers) can pick up rotated tokens
+	// without being rebuilt. This follows the same pattern Kubernetes uses
+	// for in-cluster config with BearerTokenFile.
+	// The resettable wrapper also clears the cached token when a request
+	// gets a 401 response, so a revoked token is refreshed quickly.
+	//
+	// Note: This wrap MUST be applied after the proxy header wrap above,
+	// because the proxy header round tripper only works when it directly
+	// wraps the raw *http.Transport, so it must stay innermost in the chain.
+	tokenSource := newSecretTokenSource(clusterName, cluster.Spec.SecretRef.Namespace, cluster.Spec.SecretRef.Name, secretGetter)
+	clusterConfig.Wrap(transport.ResettableTokenSourceWrapTransport(transport.NewCachedTokenSource(tokenSource)))
 
 	return clusterConfig, nil
 }
