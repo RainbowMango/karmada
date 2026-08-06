@@ -40,9 +40,10 @@
 
 多组件负载走"整体调度、不做副本划分"，`TargetCluster` 只填 `Name`、`Replicas` 留空：
 
-1. **无法表达"每个集群放几套"**：estimator 已返回 `maxSets`，但结果无处存放，堵死未来
-   set 级 divided 调度；
-2. **无法表达组件级划分**：如 "jobmanager 1 副本放 A，taskmanager 10 副本 6/4 分到 A/B"；
+1. **无法表达组件级划分**：如 "jobmanager 1 副本放 A，taskmanager 10 副本 6/4 分到 A/B"。
+   注意：多模板负载的一"套"即用户模板的原始声明，没有任何 API 字段表达"套数需求"，
+   因此不存在 "set 级 divided 调度"（套数永远是 0 或 1）；`maxSets` 只是可行性信号
+   （`maxSets >= 1` 才能装下一套），未来顶多用于打分。真正可能的划分是**拆组件内的副本**；
 3. **单模板收敛受阻**：要弃用 `spec.replicas`，`TargetCluster.Replicas` "是哪个 component
    的副本数"必须有明确定义，否则 `ReviseReplica`、graceful eviction、HPA 等消费方语义悬空。
 
@@ -56,9 +57,11 @@
 
 ### 方案 A：语义重载 —— 多组件时 `Replicas` 表示"套数（sets）"
 
-- 零 API 改动，与 `maxSets` 对齐。
-- 缺点：同一字段两种语义靠 `len(Components)` 区分，消费方易踩坑；永远无法表达组件级划分。
-- **不推荐**作为长期方案。
+- 零 API 改动。
+- 缺点：一"套"即用户模板的原始声明，没有字段表达"套数需求"，套数实际永远是 0 或 1，
+  该字段几乎不携带信息；同一字段两种语义靠 `len(Components)` 区分，消费方易踩坑；
+  且永远无法表达组件级划分。
+- **不推荐**。
 
 ### 方案 B：在 `TargetCluster` 内扩展组件级结果（推荐，讨论结论）
 
@@ -97,7 +100,8 @@ type TargetComponent struct {
   结果侧按组件记录分配，弃用路线一致；
 - 向后兼容：所有按 cluster name 索引的消费方不受影响；单模板场景双写
   `Replicas = Components[0].Replicas` 平滑过渡；
-- 表达力完整：Duplicated（每组件全量）、set 级划分、未来组件级划分均可表示。
+- 表达力完整：Duplicated（每集群一套，即每组件全量副本）与未来的组件级副本划分
+  （拆某个 component 的 replicas 到多个集群）均可表示。
 
 ### 方案 C：新增顶层字段（如 `spec.ComponentAssignments`）替代 `Clusters`
 
