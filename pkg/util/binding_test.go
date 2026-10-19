@@ -223,6 +223,144 @@ func TestIsBindingReplicasChanged(t *testing.T) {
 			strategy: &policyv1alpha1.ReplicaSchedulingStrategy{ReplicaSchedulingType: policyv1alpha1.ReplicaSchedulingTypeDuplicated},
 			expected: false,
 		},
+		{
+			name: "multiple components with matching component results should not trigger rescheduling",
+			bindingSpec: &workv1alpha2.ResourceBindingSpec{
+				Components: []workv1alpha2.Component{
+					{Name: "component1", Replicas: 3},
+					{Name: "component2", Replicas: 2},
+				},
+				Clusters: []workv1alpha2.TargetCluster{
+					{Name: ClusterMember1, Components: []workv1alpha2.TargetComponent{
+						{Name: "component1", Replicas: 3},
+						{Name: "component2", Replicas: 2},
+					}},
+					{Name: ClusterMember2, Components: []workv1alpha2.TargetComponent{
+						{Name: "component2", Replicas: 2},
+						{Name: "component1", Replicas: 3},
+					}},
+				},
+			},
+			strategy: &policyv1alpha1.ReplicaSchedulingStrategy{ReplicaSchedulingType: policyv1alpha1.ReplicaSchedulingTypeDuplicated},
+			expected: false,
+		},
+		{
+			name: "component scaled up should trigger rescheduling",
+			bindingSpec: &workv1alpha2.ResourceBindingSpec{
+				Components: []workv1alpha2.Component{
+					{Name: "component1", Replicas: 5},
+					{Name: "component2", Replicas: 2},
+				},
+				Clusters: []workv1alpha2.TargetCluster{
+					{Name: ClusterMember1, Components: []workv1alpha2.TargetComponent{
+						{Name: "component1", Replicas: 3},
+						{Name: "component2", Replicas: 2},
+					}},
+				},
+			},
+			strategy: &policyv1alpha1.ReplicaSchedulingStrategy{ReplicaSchedulingType: policyv1alpha1.ReplicaSchedulingTypeDuplicated},
+			expected: true,
+		},
+		{
+			name: "component replicas swapped should trigger rescheduling",
+			bindingSpec: &workv1alpha2.ResourceBindingSpec{
+				Components: []workv1alpha2.Component{
+					{Name: "component1", Replicas: 2},
+					{Name: "component2", Replicas: 3},
+				},
+				Clusters: []workv1alpha2.TargetCluster{
+					{Name: ClusterMember1, Components: []workv1alpha2.TargetComponent{
+						{Name: "component1", Replicas: 3},
+						{Name: "component2", Replicas: 2},
+					}},
+				},
+			},
+			strategy: &policyv1alpha1.ReplicaSchedulingStrategy{ReplicaSchedulingType: policyv1alpha1.ReplicaSchedulingTypeDuplicated},
+			expected: true,
+		},
+		{
+			name: "component added should trigger rescheduling",
+			bindingSpec: &workv1alpha2.ResourceBindingSpec{
+				Components: []workv1alpha2.Component{
+					{Name: "component1", Replicas: 3},
+					{Name: "component2", Replicas: 2},
+					{Name: "component3", Replicas: 1},
+				},
+				Clusters: []workv1alpha2.TargetCluster{
+					{Name: ClusterMember1, Components: []workv1alpha2.TargetComponent{
+						{Name: "component1", Replicas: 3},
+						{Name: "component2", Replicas: 2},
+					}},
+				},
+			},
+			strategy: &policyv1alpha1.ReplicaSchedulingStrategy{ReplicaSchedulingType: policyv1alpha1.ReplicaSchedulingTypeDuplicated},
+			expected: true,
+		},
+		{
+			name: "component removed should trigger rescheduling",
+			bindingSpec: &workv1alpha2.ResourceBindingSpec{
+				Components: []workv1alpha2.Component{
+					{Name: "component1", Replicas: 3},
+				},
+				Clusters: []workv1alpha2.TargetCluster{
+					{Name: ClusterMember1, Components: []workv1alpha2.TargetComponent{
+						{Name: "component1", Replicas: 3},
+						{Name: "component2", Replicas: 2},
+					}},
+				},
+			},
+			strategy: &policyv1alpha1.ReplicaSchedulingStrategy{ReplicaSchedulingType: policyv1alpha1.ReplicaSchedulingTypeDuplicated},
+			expected: true,
+		},
+		{
+			name: "component renamed should trigger rescheduling",
+			bindingSpec: &workv1alpha2.ResourceBindingSpec{
+				Components: []workv1alpha2.Component{
+					{Name: "component1", Replicas: 3},
+					{Name: "component3", Replicas: 2},
+				},
+				Clusters: []workv1alpha2.TargetCluster{
+					{Name: ClusterMember1, Components: []workv1alpha2.TargetComponent{
+						{Name: "component1", Replicas: 3},
+						{Name: "component2", Replicas: 2},
+					}},
+				},
+			},
+			strategy: &policyv1alpha1.ReplicaSchedulingStrategy{ReplicaSchedulingType: policyv1alpha1.ReplicaSchedulingTypeDuplicated},
+			expected: true,
+		},
+		{
+			name: "mixed clusters: only one cluster has mismatched component results should trigger rescheduling",
+			bindingSpec: &workv1alpha2.ResourceBindingSpec{
+				Components: []workv1alpha2.Component{
+					{Name: "component1", Replicas: 3},
+					{Name: "component2", Replicas: 2},
+				},
+				Clusters: []workv1alpha2.TargetCluster{
+					{Name: ClusterMember1},
+					{Name: ClusterMember2, Components: []workv1alpha2.TargetComponent{
+						{Name: "component1", Replicas: 1},
+						{Name: "component2", Replicas: 2},
+					}},
+				},
+			},
+			strategy: &policyv1alpha1.ReplicaSchedulingStrategy{ReplicaSchedulingType: policyv1alpha1.ReplicaSchedulingTypeDuplicated},
+			expected: true,
+		},
+		{
+			name: "multiple components without recorded component results should not trigger rescheduling",
+			bindingSpec: &workv1alpha2.ResourceBindingSpec{
+				Components: []workv1alpha2.Component{
+					{Name: "component1", Replicas: 3},
+					{Name: "component2", Replicas: 2},
+				},
+				Clusters: []workv1alpha2.TargetCluster{
+					{Name: ClusterMember1},
+				},
+			},
+			strategy: &policyv1alpha1.ReplicaSchedulingStrategy{ReplicaSchedulingType: policyv1alpha1.ReplicaSchedulingTypeDivided},
+			expected: false,
+		},
 	}
 
 	for _, tt := range tests {
